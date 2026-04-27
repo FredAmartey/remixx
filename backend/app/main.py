@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import json as _json
+import logging
 import re
 import threading
 import time
@@ -28,10 +30,33 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from app.agent import run_agent, _catalog, _retr
+from app.guardrails import compute_confidence, is_prompt_injection
 from app.llm import LLMClient
 from app.personas import PERSONAS, commentary as persona_commentary
 from app.rag import CATALOG
 from app.reranker import rerank
+
+
+# ── Structured logging ─────────────────────────────────────────────────────
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "level": record.levelname,
+            "msg": record.getMessage(),
+            "name": record.name,
+        }
+        if record.args and isinstance(record.args, dict):
+            payload.update(record.args)
+        return _json.dumps(payload)
+
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(JsonFormatter())
+logger = logging.getLogger("remixx")
+logger.handlers = [_handler]
+logger.setLevel(logging.INFO)
+logger.propagate = False
 
 
 app = FastAPI(title="Remixx", version="0.1.0")
@@ -104,6 +129,12 @@ def _run_agent_to_queue(message: str, persona: str, k: int, q: Queue) -> None:
 async def chat(req: ChatRequest):
     if req.persona not in PERSONAS:
         raise HTTPException(400, f"unknown persona: {req.persona}")
+    if is_prompt_injection(req.message):
+        logger.info("chat.blocked", {"reason": "prompt_injection", "len": len(req.message)})
+        raise HTTPException(400, "request blocked by input guardrail")
+
+    logger.info("chat.start", {"persona": req.persona, "len": len(req.message)})
+    t_start = time.time()
 
     async def event_stream():
         q: Queue = Queue()
@@ -123,12 +154,19 @@ async def chat(req: ChatRequest):
                 continue
             step = payload
             if step.get("step") == "result":
+                conf = compute_confidence(step["picks"])
                 data = {
                     "picks": [_sanitize_song(p) for p in step["picks"]],
                     "commentary": step["commentary"],
                     "total_ms": step["total_ms"],
                     "intent": step["intent"],
+                    "confidence": conf,
                 }
+                logger.info("chat.done", {
+                    "ms": int((time.time() - t_start) * 1000),
+                    "picks": len(step["picks"]),
+                    "confidence": conf,
+                })
                 yield {"event": "result", "data": json.dumps(data)}
             else:
                 yield {"event": "step", "data": json.dumps(step)}
@@ -188,6 +226,7 @@ def _taste_blocking(seed_songs: list[str], persona: str, k: int) -> dict:
         "profile": profile,
         "picks": [_sanitize_song(p) for p in ranked],
         "commentary": comm,
+        "confidence": compute_confidence(ranked),
         "ms": int((time.time() - t0) * 1000),
     }
 
@@ -196,6 +235,10 @@ def _taste_blocking(seed_songs: list[str], persona: str, k: int) -> dict:
 async def taste(req: TasteRequest):
     if req.persona not in PERSONAS:
         raise HTTPException(400, f"unknown persona: {req.persona}")
+    joined = ", ".join(req.seed_songs)
+    if is_prompt_injection(joined):
+        logger.info("taste.blocked", {"reason": "prompt_injection"})
+        raise HTTPException(400, "request blocked by input guardrail")
     try:
         return await asyncio.to_thread(
             _taste_blocking, req.seed_songs, req.persona, req.k
@@ -242,6 +285,7 @@ def _playlist_blocking(prompt: str, persona: str, duration_min: int) -> dict:
         "picks": [_sanitize_song(p) for p in picks],
         "commentary": final_step["commentary"],
         "intent": final_step["intent"],
+        "confidence": compute_confidence(picks),
         "ms": int((time.time() - t0) * 1000),
     }
 
@@ -250,6 +294,9 @@ def _playlist_blocking(prompt: str, persona: str, duration_min: int) -> dict:
 async def playlist(req: PlaylistRequest):
     if req.persona not in PERSONAS:
         raise HTTPException(400, f"unknown persona: {req.persona}")
+    if is_prompt_injection(req.prompt):
+        logger.info("playlist.blocked", {"reason": "prompt_injection", "len": len(req.prompt)})
+        raise HTTPException(400, "request blocked by input guardrail")
     try:
         return await asyncio.to_thread(
             _playlist_blocking, req.prompt, req.persona, req.duration_min

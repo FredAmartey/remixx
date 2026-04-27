@@ -1,0 +1,127 @@
+[
+  {
+    "query": "songs for late at night",
+    "expected_genres": ["ambient", "chill", "trip-hop", "jazz", "sleep", "new-age", "piano", "downtempo", "lofi"],
+    "expected_mood_keywords": ["chill", "relaxed", "sad", "calm", "quiet", "moody", "mellow"]
+  },
+  {
+    "query": "music for cooking dinner",
+    "expected_genres": ["jazz", "soul", "funk", "bossa-nova", "brazil", "samba", "indie", "folk", "acoustic", "r-n-b"],
+    "expected_mood_keywords": ["chill", "happy", "relaxed", "warm", "cozy"]
+  },
+  {
+    "query": "morning run energy",
+    "expected_genres": ["edm", "house", "electro", "dance", "pop", "hip-hop", "techno", "drum-and-bass", "club"],
+    "expected_mood_keywords": ["happy", "intense", "energetic", "upbeat", "uplifting"]
+  },
+  {
+    "query": "rainy sunday afternoon",
+    "expected_genres": ["jazz", "indie", "folk", "acoustic", "ambient", "chill", "singer-songwriter", "piano", "songwriter"],
+    "expected_mood_keywords": ["chill", "relaxed", "sad", "melancholy", "moody"]
+  },
+  {
+    "query": "heartbreak recovery",
+    "expected_genres": ["sad", "indie", "singer-songwriter", "folk", "acoustic", "songwriter", "r-n-b", "soul", "alternative", "emo"],
+    "expected_mood_keywords": ["sad", "melancholy", "chill", "relaxed", "wistful"]
+  },
+  {
+    "query": "deep focus while coding",
+    "expected_genres": ["ambient", "study", "classical", "piano", "minimal-techno", "electronic", "idm", "new-age", "chill"],
+    "expected_mood_keywords": ["chill", "relaxed", "focused", "calm"]
+  },
+  {
+    "query": "intense workout",
+    "expected_genres": ["hardstyle", "metal", "hard-rock", "edm", "dubstep", "drum-and-bass", "techno", "hip-hop", "punk", "metalcore", "hardcore"],
+    "expected_mood_keywords": ["intense", "happy", "energetic", "aggressive"]
+  },
+  {
+    "query": "long drive at sunset",
+    "expected_genres": ["indie", "rock", "alternative", "synth-pop", "pop", "folk", "country", "singer-songwriter", "songwriter"],
+    "expected_mood_keywords": ["chill", "happy", "relaxed", "wistful", "nostalgic"]
+  },
+  {
+    "query": "30 minute focus playlist",
+    "expected_genres": ["ambient", "study", "classical", "piano", "electronic", "minimal-techno", "chill", "idm", "new-age"],
+    "expected_mood_keywords": ["chill", "relaxed", "focused", "calm"]
+  },
+  {
+    "query": "60 minute drive playlist hopeful",
+    "expected_genres": ["indie", "pop", "rock", "alternative", "synth-pop", "folk", "singer-songwriter", "songwriter"],
+    "expected_mood_keywords": ["happy", "chill", "relaxed", "uplifting", "hopeful"]
+  },
+  {
+    "query": "45 minute slow morning",
+    "expected_genres": ["acoustic", "folk", "indie", "jazz", "ambient", "chill", "singer-songwriter", "songwriter", "piano"],
+    "expected_mood_keywords": ["chill", "relaxed", "happy", "calm", "warm"]
+  },
+  {
+    "query": "20 minute high energy gym",
+    "expected_genres": ["edm", "hardstyle", "hard-rock", "metal", "dubstep", "hip-hop", "drum-and-bass", "techno", "club"],
+    "expected_mood_keywords": ["intense", "happy", "energetic", "aggressive"]
+  },
+  {
+    "query": "90 minute studying playlist",
+    "expected_genres": ["ambient", "study", "classical", "piano", "minimal-techno", "electronic", "idm", "new-age", "chill"],
+    "expected_mood_keywords": ["chill", "relaxed", "focused", "calm"]
+  },
+  {
+    "query": "60 minute melancholic evening",
+    "expected_genres": ["sad", "indie", "folk", "singer-songwriter", "songwriter", "jazz", "piano", "ambient", "acoustic", "alternative"],
+    "expected_mood_keywords": ["sad", "chill", "relaxed", "melancholy", "wistful"]
+  },
+  {
+    "query": "45 minute upbeat party",
+    "expected_genres": ["pop", "dance", "edm", "house", "club", "party", "disco", "funk", "hip-hop", "reggaeton", "latin"],
+    "expected_mood_keywords": ["happy", "intense", "energetic", "upbeat"]
+  },
+  {
+    "query": "30 minute chill outdoor",
+    "expected_genres": ["indie", "folk", "acoustic", "chill", "ambient", "singer-songwriter", "songwriter", "reggae"],
+    "expected_mood_keywords": ["chill", "relaxed", "happy", "warm", "calm"]
+  },
+  {
+    "query": "i love these songs: massive attack — teardrop, mount kimbie — made to stray, bonobo — cirrus",
+    "expected_genres": ["trip-hop", "electronic", "ambient", "chill", "idm", "downtempo", "trip", "breakbeat", "indie"],
+    "expected_mood_keywords": ["chill", "relaxed", "moody", "atmospheric"]
+  },
+  {
+    "query": "favorites: led zeppelin — kashmir, pink floyd — comfortably numb, the doors — riders on the storm",
+    "expected_genres": ["rock", "hard-rock", "psych-rock", "alt-rock", "alternative", "blues", "classic-rock"],
+    "expected_mood_keywords": ["intense", "chill", "moody", "epic"]
+  },
+  {
+    "query": "i listen to: kendrick lamar, j cole, freddie gibbs",
+    "expected_genres": ["hip-hop", "r-n-b", "rap", "soul", "funk"],
+    "expected_mood_keywords": ["intense", "chill", "moody"]
+  },
+  {
+    "query": "songs i love: phoebe bridgers — motion sickness, julien baker — appointments, lucy dacus — night shift",
+    "expected_genres": ["indie", "indie-pop", "alternative", "folk", "singer-songwriter", "songwriter", "emo", "sad"],
+    "expected_mood_keywords": ["sad", "chill", "melancholy", "moody"]
+  },
+  {
+    "query": "playlist taste: tycho — awake, bonobo — kerala, emancipator — the darkest hour",
+    "expected_genres": ["chill", "ambient", "electronic", "trip-hop", "idm", "downtempo", "indie"],
+    "expected_mood_keywords": ["chill", "relaxed", "atmospheric"]
+  },
+  {
+    "query": "love these: aphex twin — windowlicker, boards of canada — roygbiv, autechre — gantz graf",
+    "expected_genres": ["idm", "electronic", "ambient", "minimal-techno", "techno", "breakbeat", "experimental"],
+    "expected_mood_keywords": ["chill", "intense", "moody", "atmospheric"]
+  },
+  {
+    "query": "constantly playing: sade — smooth operator, anita baker — sweet love, luther vandross — never too much",
+    "expected_genres": ["soul", "r-n-b", "funk", "jazz", "smooth-jazz", "disco"],
+    "expected_mood_keywords": ["chill", "happy", "relaxed", "smooth", "warm"]
+  },
+  {
+    "query": "favorites are: john coltrane — blue train, bill evans — peace piece, miles davis — so what",
+    "expected_genres": ["jazz", "piano", "classical", "smooth-jazz", "soul"],
+    "expected_mood_keywords": ["chill", "relaxed", "moody", "smooth", "sophisticated"]
+  },
+  {
+    "query": "i love mexico",
+    "expected_genres": ["latin", "latino", "spanish", "salsa", "mariachi", "ranchera", "norteño", "reggaeton", "mpb", "samba", "brazil"],
+    "expected_mood_keywords": ["happy", "chill", "relaxed", "warm"]
+  }
+]
