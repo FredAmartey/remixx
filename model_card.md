@@ -12,7 +12,7 @@ Recommend music in conversational form. Given a natural-language request, mood d
 
 1. **You ask.** Could be a vibe ("songs for late at night"), a playlist request ("45 minute focus playlist"), or a list of songs you love.
 2. **Remixx classifies what you meant** using Claude Haiku — chat / playlist / taste.
-3. **It searches semantically.** A sentence-transformer model embeds your message and finds the 30 most-related tracks in the catalog by cosine similarity (FAISS index).
+3. **It searches semantically.** A sentence-transformer model embeds your message and finds the 30 most-related tracks in the catalog by cosine similarity (FAISS index over metadata; Claude-generated vibe descriptions in progress for multi-source enrichment).
 4. **It scores them with the original recommender.** The Module 3 weighted-feature scorer re-ranks the candidates by genre/mood/energy/valence/danceability/acoustic match. This gives you a transparent point breakdown for every pick.
 5. **It critiques itself.** Claude Sonnet reviews the top picks and flags any that obviously don't fit your intent. If it spots problems, it can reorder.
 6. **A DJ talks to you.** One of four DJ personas (warm, snark, nerd, hype) generates commentary explaining the picks in its own voice.
@@ -26,6 +26,7 @@ Recommend music in conversational form. Given a natural-language request, mood d
 - **Single-taste assumption**: each request is independent. The system has no model of you over time.
 - **No lyric understanding**: a sad song with high-energy production is scored on energy, not emotional content.
 - **English-Western bias**: prompts and persona few-shots are English. Non-English requests still work but the persona output will be in English.
+- **Latency**: per-turn ~12-20s (down from ~30-50s in v0.1) thanks to Haiku for the critique step and parallel intent+retrieval. Still bound by the Agent SDK subprocess overhead — direct API key shaves another 3-5s.
 
 ## Evaluation Process
 
@@ -49,11 +50,12 @@ Sample run results: ~84% pass rate, avg latency 32s, avg confidence 0.76.
 
 ## Ideas for Improvement
 
-1. **Wire up vibe descriptions** — Claude-generated 1-2 sentence descriptions per track, embedded alongside metadata in a multi-source RAG fusion. Should measurably lift "feel like…" queries.
+1. **Finish vibe descriptions** — Claude-generated 1-2 sentence descriptions per track, embedded alongside metadata in a multi-source RAG fusion. Generation is in progress; full coverage should measurably lift "feel like…" queries.
 2. **Add a feedback loop** — thumbs up/down per pick, weights adjust over time. Currently weights are static.
 3. **Real audio features from Spotify API** — replace the dataset's pre-computed values with live API calls for current tracks
 4. **Multi-track-context personalization** — accept a "playlist seed" of songs you've recently played and bias retrieval toward continuity
-5. **Latency reduction** — the Agent SDK CLI subprocess adds ~5-10s per LLM call. Direct API integration via `ANTHROPIC_API_KEY` is faster; fully migrating could halve total latency.
+5. **Long-term user model that learns from saved-playlist signals** — data is now persisted in SQLite, just no learning loop yet
+6. **Streaming `/playlist` and `/taste` like `/chat` does** — currently they wait for the full agent turn before returning
 
 ## Reflection
 

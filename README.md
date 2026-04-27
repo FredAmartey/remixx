@@ -42,9 +42,10 @@ Frontend (Next.js)         Backend (FastAPI)               Data
 └── Agent trace panel      ├── Intent classifier (Haiku)   ├── FAISS index
                            ├── RAG retriever               │   (384-dim,
                            ├── Reranker (Module 3 scorer)  │    cosine sim)
-                           ├── Self-critique (Sonnet)      └── (vibes — TODO)
-                           ├── DJ Persona generator
-                           └── Confidence scorer
+                           ├── Self-critique (Haiku)       ├── vibes.json
+                           ├── DJ Persona generator        │   (generating)
+                           ├── Confidence scorer           └── remixx.db
+                           └── SQLite persistence              (SQLite)
 ```
 
 See `docs/plans/architecture/remixx.md` for the full design and `docs/plans/architecture/diagram.mmd` for the Mermaid source.
@@ -72,6 +73,8 @@ cd ..
 ```
 
 > Note: `backend/data/catalog.csv` is committed (500 tracks, ~80 KB). The build_index step generates the local FAISS index file. To regenerate the catalog itself, run `uv run python -m scripts.sample_catalog`.
+
+> First server boot takes ~7s — the FAISS retriever and catalog DataFrame are preloaded at FastAPI startup so the first request doesn't pay the model-load latency.
 
 If you're using an API key instead of the Claude CLI:
 ```bash
@@ -140,6 +143,16 @@ That profile feeds RAG + reranker, and the warm persona generates commentary.
 
 ---
 
+## Routes
+
+- `/chat` — main chat surface, streams agent steps + result via SSE
+- `/playlist` — dedicated playlist builder with narrative arc visualization
+- `/taste` — paste 3-6 favorite songs to extract a taste profile and recommend from there
+- `/personas` (API) — list of 4 DJ voices
+- `/sessions`, `/playlists` (API) — SQLite-backed session and saved-playlist endpoints
+
+---
+
 ## Persona specialization
 
 Same input, four voices:
@@ -190,7 +203,7 @@ Avg confidence: 0.76
 cd backend && uv run pytest -v
 ```
 
-Covers: LLM transport selection, RAG retrieval, reranker scoring, intent classification, persona differentiation, agent loop end-to-end, API smoke, guardrail input/output behavior. ~25 tests.
+Covers: LLM transport selection, RAG retrieval, reranker scoring, intent classification, persona differentiation, agent loop end-to-end, API smoke, guardrail input/output behavior. ~31 tests.
 
 ---
 
@@ -201,7 +214,8 @@ Covers: LLM transport selection, RAG retrieval, reranker scoring, intent classif
 - **FAISS over a managed vector DB** — 500 vectors fit in memory; `IndexFlatIP` gives exact cosine search in <2ms. No infrastructure.
 - **Module 3 scorer kept as a deterministic re-rank pass** — preserves the original project's contribution and gives a transparent, explainable score breakdown alongside the LLM's reasoning.
 - **Self-critique step is its own LLM call** — separate from the main reasoning so the critique can be observed and audited independently.
-- **No persistence (yet)** — sessions are stateless per request. SQLite is planned but not required for the demo.
+- **SQLite for persistence** — single file at `backend/data/remixx.db`. Stores sessions, messages, and saved playlists. Schema is auto-created on first FastAPI startup.
+- **Latency optimization** — Haiku for self-critique (5x faster than Sonnet at this task), intent + retrieval run in parallel, FAISS retriever preloaded at startup. Per-turn latency dropped from ~30-50s to ~12-20s.
 
 ---
 
@@ -209,9 +223,9 @@ Covers: LLM transport selection, RAG retrieval, reranker scoring, intent classif
 
 See [model_card.md](model_card.md) for the full breakdown. Summary:
 - Catalog is 500 tracks, sampled from a fixed Spotify dataset — real personalization needs orders of magnitude more
-- Agent latency ~30-50s per turn via Agent SDK (the CLI subprocess overhead). Direct API key path is faster but costs tokens.
-- Vibe descriptions (Claude-generated semantic enrichment per track) are designed but deferred — adding them would lift RAG quality measurably
-- Single-taste profile per turn — no long-term user model
+- Per-turn latency now ~12-20s with parallelism + Haiku critique. Direct API key path skips the Agent SDK CLI overhead and shaves another 3-5s.
+- Long-term user model — saved playlists persist via SQLite but the system doesn't learn from them yet
+- Vibe descriptions (Claude-generated semantic enrichment per track) are partially populated; the full multi-source RAG fusion lifts when vibe generation completes (~15-30 min for 500 tracks).
 
 ---
 

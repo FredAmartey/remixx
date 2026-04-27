@@ -24,7 +24,7 @@ I also underestimated how much persona specialization affects perceived intellig
 
 ## System limitations and future work
 
-- Latency: 30-50s per chat turn, dominated by LLM round-trips. The agent SDK's subprocess overhead adds ~5s per call. Direct API would halve this.
+- Latency: ~12-20s per chat turn after the optimization pass (Haiku critique + parallel intent/retrieval, down from 30-50s). Still bound by Agent SDK subprocess overhead; direct API shaves another 3-5s.
 - Single-taste model: every request is independent. No memory of past requests. Real personalization needs persistence + a learning signal.
 - Static weights: the +2.0 genre / +1.5 mood weights are hand-tuned, not learned from user feedback.
 - 500-song catalog: real recommenders work over 100M+ tracks. Many "no good match" failure modes get masked at scale.
@@ -33,8 +33,9 @@ I also underestimated how much persona specialization affects perceived intellig
 
 ## What I'd build next
 
-- **Vibe descriptions wired into RAG** (the deferred Phase 1.3) — 1-2 sentence Claude-generated semantic blurbs per track, embedded alongside metadata for multi-source fusion. Designed but not built.
+- **Vibe descriptions wired into RAG** (the deferred Phase 1.3) — 1-2 sentence Claude-generated semantic blurbs per track, embedded alongside metadata for multi-source fusion. Generation is in progress; the retriever fuses them in once the full set lands.
 - **Feedback loop** — thumbs up/down adjusts persona-specific reranker weights
 - **Real Spotify integration** — OAuth + Web Playback so picks actually play
 - **Long-form playlist composer** — multi-turn conversation that builds and refines a playlist with the DJ
 - **A quieter mode** — minimal UI without the agent trace panel, for users who just want results without the show
+- **Streaming `/playlist` and `/taste` endpoints like `/chat` does** — currently they're request-response, not streaming
