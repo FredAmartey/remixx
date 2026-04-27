@@ -1,10 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { NowPlayingBar } from "@/components/NowPlayingBar";
 import { AgentTrace } from "@/components/chat/AgentTrace";
 import { MessageList, type Message } from "@/components/chat/MessageList";
 import { MessageInput } from "@/components/chat/MessageInput";
+import { PersonaSelector } from "@/components/chat/PersonaSelector";
 import { streamChat, type Step } from "@/lib/api";
 
 export default function ChatPage() {
@@ -12,7 +13,22 @@ export default function ChatPage() {
   const [steps, setSteps] = useState<Step[]>([]);
   const [totalMs, setTotalMs] = useState<number | undefined>(undefined);
   const [streaming, setStreaming] = useState(false);
-  const [persona] = useState("warm");
+  const [persona, setPersona] = useState<string>("warm");
+
+  useEffect(() => {
+    const saved =
+      typeof window !== "undefined"
+        ? localStorage.getItem("remixx.persona")
+        : null;
+    if (saved) setPersona(saved);
+  }, []);
+
+  const handlePersonaChange = (key: string) => {
+    setPersona(key);
+    try {
+      localStorage.setItem("remixx.persona", key);
+    } catch {}
+  };
 
   async function send(message: string) {
     setMessages((m) => [...m, { role: "user", content: message }]);
@@ -42,11 +58,14 @@ export default function ChatPage() {
     <div className="flex min-h-screen">
       <Sidebar />
       <div className="flex-1 ml-[240px] mr-[360px] mb-24 flex flex-col h-screen">
-        <div className="px-12 pt-8 pb-4 border-b border-cream/5 flex items-center gap-3">
-          <span className="w-1.5 h-1.5 rounded-full bg-copper animate-pulse" />
-          <span className="font-display italic text-cream-muted text-sm">
-            Remixx · Chat · {persona}
-          </span>
+        <div className="px-12 pt-8 pb-4 border-b border-cream/5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-1.5 h-1.5 rounded-full bg-copper animate-pulse" />
+            <span className="font-display italic text-cream-muted text-sm">
+              Remixx · Chat
+            </span>
+          </div>
+          <PersonaSelector value={persona} onChange={handlePersonaChange} />
         </div>
         <MessageList messages={messages} isStreaming={streaming} />
         <MessageInput onSubmit={send} disabled={streaming} />
