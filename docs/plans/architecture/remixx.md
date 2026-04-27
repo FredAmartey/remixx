@@ -2,6 +2,8 @@
 
 Conversational AI music companion. Extends the Module 3 content-based recommender (weighted scoring across genre, mood, energy, valence, danceability, acousticness) into a full applied AI system with RAG, an observable agent loop, persona-based specialization, and an evaluation harness.
 
+> **v1.0 status note:** SQLite persistence, vibe descriptions, and multi-source RAG fusion described below are **deferred** — designed but not shipped in v1.0. The current code is stateless per request and uses single-source RAG over catalog metadata. See [README.md](../../../README.md) for what actually ships.
+
 ## Product
 
 Three modes share one chat surface.

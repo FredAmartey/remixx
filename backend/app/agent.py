@@ -8,12 +8,12 @@ This is the substantive AI feature: ties RAG + reranker + a critique pass togeth
 from __future__ import annotations
 
 import json
-import re
 import time
 from typing import Generator
 
 import pandas as pd
 
+from app.guardrails import extract_first_json
 from app.intent import classify_intent
 from app.llm import LLMClient
 from app.personas import commentary as persona_commentary
@@ -80,9 +80,21 @@ def run_agent(
         "ms": int((time.time() - t) * 1000),
     }
 
+    # Mode-aware adjustments
+    mode = intent.get("mode", "chat")
+    seed_songs = intent.get("seed_songs", []) or []
+    duration_min = intent.get("duration_min")
+
+    # For taste mode, use seed songs as the retrieval query
+    retrieval_query = ", ".join(seed_songs) if mode == "taste" and seed_songs else user_query
+
+    # For playlist mode, bump k based on duration (~3-4 min per track)
+    if mode == "playlist" and duration_min:
+        k = max(5, min(12, duration_min // 4))
+
     # Step 2: retrieve
     t = time.time()
-    hits = retr.search(user_query, k=30)
+    hits = retr.search(retrieval_query, k=30)
     candidates: list[dict] = []
     for h in hits:
         row = df[df["id"] == h["id"]]
@@ -125,11 +137,11 @@ def run_agent(
         max_tokens=600,
         system=CRITIQUE_SYSTEM,
     )
-    m = re.search(r'\{.*?\}', crit_raw, re.DOTALL)
+    text = extract_first_json(crit_raw)
     crit: dict = {"issues": [], "reorder": None}
-    if m:
+    if text:
         try:
-            crit = json.loads(m.group())
+            crit = json.loads(text)
         except json.JSONDecodeError:
             pass
     issue_count = len(crit.get("issues", []))
@@ -177,6 +189,19 @@ def run_agent(
         "detail": f"{len(final)} picks",
         "ms": int((time.time() - t) * 1000),
     }
+
+    # Playlist mode: tag each pick with a narrative arc segment
+    if mode == "playlist":
+        for i, p in enumerate(final):
+            pos = i / max(len(final) - 1, 1)
+            if pos < 0.25:
+                p["_arc"] = "opening"
+            elif pos < 0.6:
+                p["_arc"] = "build"
+            elif pos < 0.85:
+                p["_arc"] = "peak"
+            else:
+                p["_arc"] = "wind-down"
 
     # Step 6: persona commentary
     t = time.time()

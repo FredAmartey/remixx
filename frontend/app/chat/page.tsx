@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { NowPlayingBar } from "@/components/NowPlayingBar";
 import { AgentTrace } from "@/components/chat/AgentTrace";
@@ -13,15 +13,10 @@ export default function ChatPage() {
   const [steps, setSteps] = useState<Step[]>([]);
   const [totalMs, setTotalMs] = useState<number | undefined>(undefined);
   const [streaming, setStreaming] = useState(false);
-  const [persona, setPersona] = useState<string>("warm");
-
-  useEffect(() => {
-    const saved =
-      typeof window !== "undefined"
-        ? localStorage.getItem("remixx.persona")
-        : null;
-    if (saved) setPersona(saved);
-  }, []);
+  const [persona, setPersona] = useState<string>(() => {
+    if (typeof window === "undefined") return "warm";
+    return localStorage.getItem("remixx.persona") ?? "warm";
+  });
 
   const handlePersonaChange = (key: string) => {
     setPersona(key);
@@ -44,7 +39,18 @@ export default function ChatPage() {
           setMessages((m) => [...m, { role: "assistant", result: ev.payload }]);
           setTotalMs(ev.payload.total_ms);
         } else if (ev.type === "error") {
-          console.error("agent error:", ev.payload.error);
+          setMessages((m) => [
+            ...m,
+            {
+              role: "assistant",
+              result: {
+                picks: [],
+                commentary: `Couldn't process that — ${ev.payload.error}`,
+                total_ms: 0,
+                intent: { mode: "chat", duration_min: null, seed_songs: [] },
+              },
+            },
+          ]);
         }
       }
     } catch (err) {

@@ -5,9 +5,9 @@ Uses Haiku with a JSON-output system prompt. Falls back to "chat" on parse error
 from __future__ import annotations
 
 import json
-import re
 from typing import Literal, TypedDict
 
+from app.guardrails import extract_first_json
 from app.llm import LLMClient
 
 
@@ -34,11 +34,11 @@ When mode is "taste", populate seed_songs with the song strings as written.
 def classify_intent(message: str) -> Intent:
     client = LLMClient()
     raw = client.complete("haiku", message, max_tokens=300, system=SYSTEM)
-    match = re.search(r'\{.*?\}', raw, re.DOTALL)
-    if not match:
+    text = extract_first_json(raw)
+    if not text:
         return {"mode": "chat", "duration_min": None, "seed_songs": []}
     try:
-        parsed = json.loads(match.group())
+        parsed = json.loads(text)
         return {
             "mode": parsed.get("mode", "chat") if parsed.get("mode") in {"chat", "playlist", "taste"} else "chat",
             "duration_min": parsed.get("duration_min"),

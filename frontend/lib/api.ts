@@ -46,6 +46,15 @@ export async function* streamChat(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, persona, k }),
   });
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {}
+    yield { type: "error", payload: { error: detail } };
+    return;
+  }
   if (!res.body) throw new Error("no body");
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

@@ -16,12 +16,11 @@ import asyncio
 import json
 import json as _json
 import logging
-import re
 import threading
 import time
 from pathlib import Path
 from queue import Queue
-from typing import Any
+from typing import Annotated, Any
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -30,7 +29,7 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from app.agent import run_agent, _catalog, _retr
-from app.guardrails import compute_confidence, is_prompt_injection
+from app.guardrails import compute_confidence, extract_first_json, is_prompt_injection
 from app.llm import LLMClient
 from app.personas import PERSONAS, commentary as persona_commentary
 from app.rag import CATALOG
@@ -79,7 +78,10 @@ class ChatRequest(BaseModel):
 
 
 class TasteRequest(BaseModel):
-    seed_songs: list[str] = Field(min_length=1, max_length=20)
+    seed_songs: Annotated[
+        list[Annotated[str, Field(min_length=1, max_length=120)]],
+        Field(min_length=1, max_length=20),
+    ]
     persona: str = Field(default="warm")
     k: int = Field(default=8, ge=1, le=20)
 
@@ -195,11 +197,11 @@ def _taste_blocking(seed_songs: list[str], persona: str, k: int) -> dict:
         system=PROFILE_SYSTEM,
         max_tokens=500,
     )
-    m = re.search(r"\{.*?\}", raw, re.DOTALL)
-    if not m:
+    text = extract_first_json(raw)
+    if not text:
         raise ValueError("could not parse taste profile")
     try:
-        profile = json.loads(m.group())
+        profile = json.loads(text)
     except json.JSONDecodeError as e:
         raise ValueError(f"invalid taste profile JSON: {e}") from e
 

@@ -28,6 +28,38 @@ def is_prompt_injection(text: str) -> bool:
     return any(p.search(text) for p in _COMPILED)
 
 
+def extract_first_json(raw: str) -> str | None:
+    """Extract the first balanced JSON object from a string.
+    Handles nested objects/arrays correctly. Returns None if no balanced { } found.
+    """
+    start = raw.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(raw)):
+        ch = raw[i]
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return raw[start:i + 1]
+    return None
+
+
 def compute_confidence(picks: list[dict]) -> float:
     """Average of top-3 _rag_score and normalized top-3 _score, in [0, 1].
 

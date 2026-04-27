@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import os
+from pathlib import Path
 from typing import Literal
+
+from dotenv import load_dotenv
+
+# Load backend/.env if present so users can configure ANTHROPIC_API_KEY
+# without exporting it in their shell.
+_env_path = Path(__file__).resolve().parents[1] / ".env"
+if _env_path.exists():
+    load_dotenv(_env_path)
 
 MODELS = {
     "haiku": "claude-haiku-4-5-20251001",
