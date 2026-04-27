@@ -95,3 +95,88 @@ export async function fetchPersonas(): Promise<{ key: string; name: string; tagl
   const res = await fetch(`${API}/personas`);
   return res.json();
 }
+
+// ── /taste ─────────────────────────────────────────────────────────────────
+
+export type TasteProfile = {
+  genre: string;
+  mood: string;
+  energy: number;
+  likes_acoustic: boolean;
+  summary: string;
+};
+
+export type TasteResult = {
+  profile: TasteProfile;
+  picks: Pick[];
+  commentary: string;
+  ms: number;
+};
+
+export async function readTaste(
+  seed_songs: string[],
+  persona: string,
+  k = 8,
+): Promise<TasteResult> {
+  const res = await fetch(`${API}/taste`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ seed_songs, persona, k }),
+  });
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {}
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+// ── /playlist ──────────────────────────────────────────────────────────────
+
+export type PlaylistResult = {
+  prompt: string;
+  duration_min: number;
+  picks: (Pick & { _arc?: string })[];
+  commentary: string;
+  intent: { mode: string; duration_min: number | null; seed_songs: string[] };
+  ms: number;
+};
+
+export async function generatePlaylist(
+  prompt: string,
+  duration_min: number,
+  persona: string,
+): Promise<PlaylistResult> {
+  const res = await fetch(`${API}/playlist`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, duration_min, persona }),
+  });
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {}
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+export async function savePlaylist(
+  name: string,
+  prompt: string,
+  tracks: Pick[],
+  session_id?: string,
+): Promise<{ id: number }> {
+  const res = await fetch(`${API}/playlists`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, prompt, tracks, session_id }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
