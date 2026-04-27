@@ -1,0 +1,43 @@
+flowchart LR
+    subgraph FE["Frontend (Next.js + Tailwind)"]
+        UI["Chat UI<br/>Persona dropdown<br/>Agent trace panel"]
+    end
+
+    subgraph BE["Backend (FastAPI + Claude Agent SDK)"]
+        API["/chat (SSE)<br/>/taste<br/>/playlist<br/>/personas"]
+        GUARD["Guardrails<br/>injection filter<br/>length cap"]
+        AGENT["Agent loop<br/>plan → retrieve →<br/>rerank → critique →<br/>reorder → DJ commentary"]
+        INTENT["Intent classifier<br/>(Haiku)"]
+        RAG["RAG retriever<br/>(sentence-transformers + FAISS)"]
+        RERANK["Reranker<br/>Module 3 scorer<br/>(deterministic)"]
+        PERSONA["DJ Personas<br/>(few-shot, Sonnet)"]
+        CONF["Confidence<br/>scoring"]
+    end
+
+    subgraph DATA["Data"]
+        CSV["catalog.csv<br/>500 tracks"]
+        IDX["FAISS index<br/>+ id metadata"]
+    end
+
+    UI -->|HTTP/SSE| API
+    API --> GUARD
+    GUARD -->|allow| AGENT
+    GUARD -->|block 400| UI
+    AGENT --> INTENT
+    AGENT --> RAG
+    RAG --> CSV
+    RAG --> IDX
+    AGENT --> RERANK
+    RERANK -->|user_prefs derived<br/>from top retrievals| AGENT
+    AGENT -->|self-critique<br/>via Sonnet| AGENT
+    AGENT --> PERSONA
+    AGENT --> CONF
+    CONF -->|confidence + picks +<br/>commentary + step trace| API
+    API -->|SSE stream| UI
+
+    classDef frontend fill:#2A1F18,stroke:#C97939,color:#F5EFE3;
+    classDef backend fill:#1A130E,stroke:#E8A14A,color:#F5EFE3;
+    classDef data fill:#0E0908,stroke:#C97939,color:#F5EFE3;
+    class FE frontend
+    class BE backend
+    class DATA data
