@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import statistics
 import sys
 import time
@@ -26,16 +27,27 @@ GOLDEN = Path(__file__).resolve().parent / "golden_set.json"
 
 
 def matches(picks: list[dict], expected_genres: list[str], expected_mood_keywords: list[str]) -> bool:
-    """A pick passes if its genre OR mood matches anything in the expected sets."""
-    eg = {g.lower() for g in expected_genres}
-    em = {m.lower() for m in expected_mood_keywords}
+    """A pick passes if its genre matches any expected genre exactly OR
+    any expected genre appears as a whole-word token in the pick's genre,
+    OR its mood substring-matches any expected mood keyword.
+    Stricter than naive substring on both sides — prevents 'emo' matching 'electronic'.
+    """
+    eg = {g.lower().strip() for g in expected_genres}
+    em = {m.lower().strip() for m in expected_mood_keywords}
     for p in picks:
-        genre = str(p.get("genre", "")).lower()
-        mood = str(p.get("mood", "")).lower()
-        if any(e in genre or genre in e for e in eg if e):
+        genre = str(p.get("genre", "")).lower().strip()
+        mood = str(p.get("mood", "")).lower().strip()
+        if genre in eg:
             return True
-        if any(e in mood or mood in e for e in em if e):
+        # Whole-word token match for hyphenated genres like "trip-hop", "k-pop", "hip-hop"
+        genre_tokens = set(re.split(r"[-/\s]+", genre)) | {genre}
+        if eg & genre_tokens:
             return True
+        if mood in em:
+            return True
+        for kw in em:
+            if kw and kw in mood:
+                return True
     return False
 
 

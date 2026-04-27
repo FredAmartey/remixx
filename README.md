@@ -63,13 +63,15 @@ git clone https://github.com/FredAmartey/remixx.git
 cd remixx
 
 # Backend
-cd backend && uv sync && uv run python -m scripts.sample_catalog && uv run python -m scripts.build_index
+cd backend && uv sync && uv run python -m scripts.build_index
 cd ..
 
 # Frontend
 cd frontend && npm install
 cd ..
 ```
+
+> Note: `backend/data/catalog.csv` is committed (500 tracks, ~80 KB). The build_index step generates the local FAISS index file. To regenerate the catalog itself, run `uv run python -m scripts.sample_catalog`.
 
 If you're using an API key instead of the Claude CLI:
 ```bash

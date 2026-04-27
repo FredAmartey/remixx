@@ -195,7 +195,7 @@ def _taste_blocking(seed_songs: list[str], persona: str, k: int) -> dict:
         system=PROFILE_SYSTEM,
         max_tokens=500,
     )
-    m = re.search(r"\{.*\}", raw, re.DOTALL)
+    m = re.search(r"\{.*?\}", raw, re.DOTALL)
     if not m:
         raise ValueError("could not parse taste profile")
     try:

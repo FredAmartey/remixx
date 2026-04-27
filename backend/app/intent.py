@@ -34,7 +34,7 @@ When mode is "taste", populate seed_songs with the song strings as written.
 def classify_intent(message: str) -> Intent:
     client = LLMClient()
     raw = client.complete("haiku", message, max_tokens=300, system=SYSTEM)
-    match = re.search(r'\{.*\}', raw, re.DOTALL)
+    match = re.search(r'\{.*?\}', raw, re.DOTALL)
     if not match:
         return {"mode": "chat", "duration_min": None, "seed_songs": []}
     try:

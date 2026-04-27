@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import re
 import time
-from pathlib import Path
 from typing import Generator
 
 import pandas as pd
@@ -44,8 +43,10 @@ CRITIQUE_SYSTEM = (
     "You look at a ranked list of picks and identify ones that obviously don't match the user's intent. "
     "Reply with strict JSON only:\n"
     '{"issues": [{"index": <int>, "reason": "<short>"}], "reorder": null | [<int>, ...]}\n\n'
+    "Indexes are 1-based and must be within [1, k] where k is the number of picks shown. "
+    "Do not include duplicate indexes in `reorder`. "
     "If everything fits, return {\"issues\": [], \"reorder\": null}. "
-    "Indices are 1-based. Be conservative — only flag obvious mismatches, not subjective preferences."
+    "Be conservative — only flag obvious mismatches, not subjective preferences."
 )
 
 
@@ -124,7 +125,7 @@ def run_agent(
         max_tokens=600,
         system=CRITIQUE_SYSTEM,
     )
-    m = re.search(r'\{.*\}', crit_raw, re.DOTALL)
+    m = re.search(r'\{.*?\}', crit_raw, re.DOTALL)
     crit: dict = {"issues": [], "reorder": None}
     if m:
         try:
@@ -145,15 +146,29 @@ def run_agent(
     reorder = crit.get("reorder")
     if reorder and isinstance(reorder, list):
         try:
-            final = [ranked[i - 1] for i in reorder[:k] if 0 < i <= len(ranked)]
-            if len(final) < k:
-                # backfill from ranked, skipping ones already chosen
-                used_ids = {f.get("id") for f in final}
-                for r in ranked:
-                    if r.get("id") not in used_ids:
-                        final.append(r)
-                        if len(final) >= k:
-                            break
+            seen_ids: set[str] = set()
+            deduped: list[dict] = []
+            for i in reorder:
+                if not (isinstance(i, int) and 1 <= i <= k):
+                    continue
+                candidate = ranked[i - 1]
+                cid = candidate.get("id")
+                if cid in seen_ids:
+                    continue
+                seen_ids.add(cid)
+                deduped.append(candidate)
+                if len(deduped) >= k:
+                    break
+            if deduped:
+                final = deduped
+                if len(final) < k:
+                    # backfill from ranked, skipping ones already chosen
+                    for r in ranked:
+                        if r.get("id") not in seen_ids:
+                            final.append(r)
+                            seen_ids.add(r.get("id"))
+                            if len(final) >= k:
+                                break
         except (IndexError, ValueError, TypeError):
             final = ranked[:k]
     yield {
