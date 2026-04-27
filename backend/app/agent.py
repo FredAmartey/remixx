@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Generator
 
 import pandas as pd
@@ -19,6 +20,8 @@ from app.llm import LLMClient
 from app.personas import commentary as persona_commentary
 from app.rag import CATALOG, RAGRetriever
 from app.reranker import rerank
+
+_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="remixx-agent")
 
 _catalog_df: pd.DataFrame | None = None
 _retriever: RAGRetriever | None = None
@@ -70,9 +73,12 @@ def run_agent(
     retr = _retr()
     llm = LLMClient()
 
-    # Step 1: parse intent
+    # Steps 1 + 2 in parallel — intent (Haiku LLM call) and retrieval (FAISS) are independent
     t = time.time()
-    intent = classify_intent(user_query)
+    intent_fut = _executor.submit(classify_intent, user_query)
+    retrieve_fut = _executor.submit(retr.search, user_query, 30)
+
+    intent = intent_fut.result()
     yield {
         "step": 1,
         "title": "Parse intent",
@@ -85,16 +91,20 @@ def run_agent(
     seed_songs = intent.get("seed_songs", []) or []
     duration_min = intent.get("duration_min")
 
-    # For taste mode, use seed songs as the retrieval query
-    retrieval_query = ", ".join(seed_songs) if mode == "taste" and seed_songs else user_query
+    # For taste mode, use seed songs as the retrieval query — but we already kicked off
+    # retrieval with user_query. Re-run if needed.
+    if mode == "taste" and seed_songs:
+        retrieve_fut.cancel()
+        retrieval_query = ", ".join(seed_songs)
+        hits = retr.search(retrieval_query, k=30)
+    else:
+        hits = retrieve_fut.result()
 
     # For playlist mode, bump k based on duration (~3-4 min per track)
     if mode == "playlist" and duration_min:
         k = max(5, min(12, duration_min // 4))
 
-    # Step 2: retrieve
-    t = time.time()
-    hits = retr.search(retrieval_query, k=30)
+    t2 = time.time()
     candidates: list[dict] = []
     for h in hits:
         row = df[df["id"] == h["id"]]
@@ -132,7 +142,7 @@ def run_agent(
     # Step 4: self-critique
     t = time.time()
     crit_raw = llm.complete(
-        "sonnet",
+        "haiku",
         _critique_prompt(user_query, ranked[:k]),
         max_tokens=600,
         system=CRITIQUE_SYSTEM,

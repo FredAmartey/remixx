@@ -29,6 +29,7 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from app.agent import run_agent, _catalog, _retr
+from app.db import init_db, create_session, add_message, save_playlist, list_playlists
 from app.guardrails import compute_confidence, extract_first_json, is_prompt_injection
 from app.llm import LLMClient
 from app.personas import PERSONAS, commentary as persona_commentary
@@ -67,6 +68,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def _on_startup() -> None:
+    init_db()
+    # Preload the catalog DataFrame and FAISS retriever so the first /chat request
+    # doesn't pay the ~5s model-load latency.
+    await asyncio.to_thread(_catalog)
+    await asyncio.to_thread(_retr)
 
 
 # ── Request / response models ──────────────────────────────────────────────
@@ -326,6 +336,31 @@ async def get_track(track_id: str):
     if len(row) == 0:
         raise HTTPException(404, f"track {track_id} not found")
     return _sanitize_song(row.iloc[0].to_dict())
+
+
+# ── /sessions, /playlists ──────────────────────────────────────────────────
+
+class SavePlaylistRequest(BaseModel):
+    session_id: str | None = None
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    prompt: str | None = Field(default=None, max_length=500)
+    tracks: list[dict]
+
+
+@app.post("/sessions")
+async def new_session():
+    return {"id": create_session()}
+
+
+@app.post("/playlists")
+async def save_playlist_endpoint(req: SavePlaylistRequest):
+    pid = save_playlist(req.session_id, req.name, req.prompt, req.tracks)
+    return {"id": pid}
+
+
+@app.get("/playlists")
+async def list_playlists_endpoint(session_id: str | None = None, limit: int = 50):
+    return list_playlists(session_id=session_id, limit=min(max(limit, 1), 200))
 
 
 # ── /healthz ───────────────────────────────────────────────────────────────
