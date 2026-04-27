@@ -1,0 +1,50 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --color-walnut: 42 31 24;          /* #2A1F18 */
+  --color-walnut-deep: 26 19 14;     /* #1A130E */
+  --color-cream: 245 239 227;        /* #F5EFE3 */
+  --color-cream-muted: 200 192 178;  /* #C8C0B2 */
+  --color-copper: 201 121 57;        /* #C97939 */
+  --color-copper-glow: 232 161 74;   /* #E8A14A */
+
+  --background: var(--color-walnut);
+  --foreground: var(--color-cream);
+  --primary: var(--color-copper);
+
+  --radius: 0.625rem;
+}
+
+@theme inline {
+  --color-background: rgb(var(--background));
+  --color-foreground: rgb(var(--foreground));
+  --color-primary: rgb(var(--primary));
+
+  --color-walnut: rgb(var(--color-walnut));
+  --color-walnut-deep: rgb(var(--color-walnut-deep));
+  --color-cream: rgb(var(--color-cream));
+  --color-cream-muted: rgb(var(--color-cream-muted));
+  --color-copper: rgb(var(--color-copper));
+  --color-copper-glow: rgb(var(--color-copper-glow));
+
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+body {
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+  font-feature-settings: "ss01", "ss02";
+}
