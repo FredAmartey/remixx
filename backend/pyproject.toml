@@ -1,0 +1,27 @@
+[project]
+name = "remixx-backend"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "anthropic>=0.42",
+    "claude-agent-sdk>=0.1.0",
+    "sentence-transformers>=3.3",
+    "faiss-cpu>=1.9",
+    "pandas>=2.2",
+    "pydantic>=2.10",
+    "python-dotenv>=1.0",
+    "sse-starlette>=2.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "httpx>=0.28",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
