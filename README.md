@@ -43,7 +43,7 @@ Frontend (Next.js)         Backend (FastAPI)               Data
                            ├── RAG retriever               │   (384-dim,
                            ├── Reranker (Module 3 scorer)  │    cosine sim)
                            ├── Self-critique (Haiku)       ├── vibes.json
-                           ├── DJ Persona generator        │   (generating)
+                           ├── DJ Persona generator        │
                            ├── Confidence scorer           └── remixx.db
                            └── SQLite persistence              (SQLite)
 ```
@@ -225,7 +225,7 @@ See [model_card.md](model_card.md) for the full breakdown. Summary:
 - Catalog is 500 tracks, sampled from a fixed Spotify dataset — real personalization needs orders of magnitude more
 - Per-turn latency now ~12-20s with parallelism + Haiku critique. Direct API key path skips the Agent SDK CLI overhead and shaves another 3-5s.
 - Long-term user model — saved playlists persist via SQLite but the system doesn't learn from them yet
-- Vibe descriptions (Claude-generated semantic enrichment per track) are partially populated; the full multi-source RAG fusion lifts when vibe generation completes (~15-30 min for 500 tracks).
+- Multi-source RAG with vibe descriptions ships — every track has a Claude-generated 1-2 sentence vibe blurb embedded alongside its metadata, and the FAISS index uses late fusion (averaged normalized embeddings) so semantic queries match on both signals.
 
 ---
 

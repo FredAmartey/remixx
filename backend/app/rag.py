@@ -1,11 +1,12 @@
 """Semantic retrieval over the Remixx catalog using sentence-transformers + FAISS.
 
-Builds a single text representation per track from metadata
-("{title} by {artist}. Genre: {genre}, mood: {mood}.") and embeds it with
-all-MiniLM-L6-v2. Inner-product search on normalized vectors = cosine similarity.
+Each track gets two text representations — metadata (title/artist/genre/mood) and a
+Claude-generated vibe blurb. We encode both with all-MiniLM-L6-v2, normalize, and
+average the two embeddings to produce a single 384-dim fused vector. Inner-product
+search on normalized vectors = cosine similarity.
 
-Vibes (Claude-generated descriptions) are NOT included yet — that's a planned
-RAG enhancement.
+When a vibe is missing for a track, the fused vector falls back to the metadata
+embedding alone.
 """
 from __future__ import annotations
 
@@ -20,12 +21,18 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 CATALOG = DATA_DIR / "catalog.csv"
 INDEX = DATA_DIR / "index.faiss"
 META = DATA_DIR / "index_meta.json"
+VIBES = DATA_DIR / "vibes.json"
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 
-def track_text(row: dict) -> str:
-    """Single text representation for embedding."""
+def metadata_text(row: dict) -> str:
+    """Metadata-only text representation: title + artist + genre + mood."""
     return f"{row['title']} by {row['artist']}. Genre: {row['genre']}, mood: {row['mood']}."
+
+
+def vibe_text(row: dict, vibes: dict[str, str]) -> str | None:
+    """Vibe blurb if cached, else None."""
+    return vibes.get(str(row["id"]))
 
 
 class RAGRetriever:

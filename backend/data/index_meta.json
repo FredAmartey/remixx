@@ -501,5 +501,6 @@
     "35hcTbiin6rMydWixorzN5",
     "6kooDsorCpWVMGc994XjWN"
   ],
-  "model": "sentence-transformers/all-MiniLM-L6-v2"
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "fusion": "metadata+vibe (late, averaged)"
 }

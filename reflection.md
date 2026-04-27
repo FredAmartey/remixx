@@ -33,7 +33,6 @@ I also underestimated how much persona specialization affects perceived intellig
 
 ## What I'd build next
 
-- **Vibe descriptions wired into RAG** (the deferred Phase 1.3) — 1-2 sentence Claude-generated semantic blurbs per track, embedded alongside metadata for multi-source fusion. Generation is in progress; the retriever fuses them in once the full set lands.
 - **Feedback loop** — thumbs up/down adjusts persona-specific reranker weights
 - **Real Spotify integration** — OAuth + Web Playback so picks actually play
 - **Long-form playlist composer** — multi-turn conversation that builds and refines a playlist with the DJ

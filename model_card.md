@@ -6,13 +6,13 @@ Recommend music in conversational form. Given a natural-language request, mood d
 ## Data Used
 - 500 tracks sampled from the [Kaggle Spotify Tracks Dataset](https://huggingface.co/datasets/maharshipandya/spotify-tracks-dataset) (114K rows; sampled with genre diversity, max 30 per genre)
 - Per-track features used: title, artist, genre, mood (derived from valence + energy), energy, valence, danceability, acousticness, tempo
-- Vibe descriptions (LLM-generated semantic blurbs) are designed but **deferred** — would meaningfully extend RAG quality
+- Vibe descriptions (Claude-generated 1-2 sentence semantic blurbs, one per track) embedded alongside metadata via late-fusion averaging in the FAISS index
 
 ## Algorithm Summary (in plain language)
 
 1. **You ask.** Could be a vibe ("songs for late at night"), a playlist request ("45 minute focus playlist"), or a list of songs you love.
 2. **Remixx classifies what you meant** using Claude Haiku — chat / playlist / taste.
-3. **It searches semantically.** A sentence-transformer model embeds your message and finds the 30 most-related tracks in the catalog by cosine similarity (FAISS index over metadata; Claude-generated vibe descriptions in progress for multi-source enrichment).
+3. **It searches semantically.** A sentence-transformer model embeds your message and finds the 30 most-related tracks in the catalog by cosine similarity. The FAISS index uses late fusion: each track is encoded twice (metadata + a Claude-generated vibe description) and the two normalized embeddings are averaged. This makes "feel like…" queries match on the actual feel, not just the title and genre.
 4. **It scores them with the original recommender.** The Module 3 weighted-feature scorer re-ranks the candidates by genre/mood/energy/valence/danceability/acoustic match. This gives you a transparent point breakdown for every pick.
 5. **It critiques itself.** Claude Sonnet reviews the top picks and flags any that obviously don't fit your intent. If it spots problems, it can reorder.
 6. **A DJ talks to you.** One of four DJ personas (warm, snark, nerd, hype) generates commentary explaining the picks in its own voice.
@@ -50,7 +50,7 @@ Sample run results: ~84% pass rate, avg latency 32s, avg confidence 0.76.
 
 ## Ideas for Improvement
 
-1. **Finish vibe descriptions** — Claude-generated 1-2 sentence descriptions per track, embedded alongside metadata in a multi-source RAG fusion. Generation is in progress; full coverage should measurably lift "feel like…" queries.
+1. **Per-source retrieval weighting** — currently the metadata + vibe fusion is a simple average. Letting the agent learn weights per query mode (e.g. emphasize vibe for "feels like" queries, emphasize metadata for genre-specific asks) would lift quality further.
 2. **Add a feedback loop** — thumbs up/down per pick, weights adjust over time. Currently weights are static.
 3. **Real audio features from Spotify API** — replace the dataset's pre-computed values with live API calls for current tracks
 4. **Multi-track-context personalization** — accept a "playlist seed" of songs you've recently played and bias retrieval toward continuity
