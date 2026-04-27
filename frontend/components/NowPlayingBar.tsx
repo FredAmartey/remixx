@@ -1,8 +1,11 @@
 import { Play, SkipBack, SkipForward, Volume2 } from "lucide-react";
 
-export function NowPlayingBar() {
+export function NowPlayingBar({ rightOffset = 0 }: { rightOffset?: number } = {}) {
   return (
-    <div className="fixed bottom-0 left-[240px] right-0 h-24 bg-walnut-deep border-t border-cream/10 flex items-center px-6 gap-6 z-10">
+    <div
+      className="fixed bottom-0 left-[240px] h-24 bg-walnut-deep border-t border-cream/10 flex items-center px-6 gap-6 z-10"
+      style={{ right: rightOffset }}
+    >
       {/* Left: track info */}
       <div className="flex items-center gap-4 w-[320px]">
         <div
