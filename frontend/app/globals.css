@@ -44,7 +44,67 @@
 }
 
 body {
-  background: rgb(var(--background));
+  background:
+    radial-gradient(circle at 35% 12%, rgb(var(--color-copper) / 0.08), transparent 32rem),
+    rgb(var(--background));
   color: rgb(var(--foreground));
   font-feature-settings: "ss01", "ss02";
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgb(var(--color-copper) / 0.38);
+  color: rgb(var(--color-cream));
+}
+
+.range-copper {
+  height: 14px;
+  appearance: none;
+  background: transparent;
+}
+
+.range-copper::-webkit-slider-runnable-track {
+  height: 1px;
+  background:
+    linear-gradient(
+      to right,
+      rgb(var(--color-copper)) 0 var(--range-progress, 0%),
+      rgb(var(--color-cream) / 0.16) var(--range-progress, 0%) 100%
+    );
+}
+
+.range-copper::-webkit-slider-thumb {
+  width: 3px;
+  height: 18px;
+  margin-top: -8px;
+  appearance: none;
+  background: rgb(var(--color-cream-muted));
+  border-radius: 1px;
+}
+
+.range-copper::-moz-range-track {
+  height: 1px;
+  background:
+    linear-gradient(
+      to right,
+      rgb(var(--color-copper)) 0 var(--range-progress, 0%),
+      rgb(var(--color-cream) / 0.16) var(--range-progress, 0%) 100%
+    );
+}
+
+.range-copper::-moz-range-thumb {
+  width: 3px;
+  height: 18px;
+  background: rgb(var(--color-cream-muted));
+  border: 0;
+  border-radius: 1px;
 }

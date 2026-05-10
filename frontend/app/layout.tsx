@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
+import { PlayerProvider } from "@/components/player/PlayerProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -26,10 +27,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={`${inter.variable} ${playfair.variable} h-full antialiased`}
     >
       <body className="min-h-screen bg-walnut text-cream flex flex-col">
-        {children}
+        <PlayerProvider>{children}</PlayerProvider>
       </body>
     </html>
   );

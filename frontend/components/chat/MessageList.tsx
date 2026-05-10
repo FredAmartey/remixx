@@ -12,13 +12,13 @@ export function MessageList({ messages, isStreaming }: { messages: Message[]; is
         {messages.map((m, i) =>
           m.role === "user" ? (
             <div key={i} className="self-end max-w-[85%]">
-              <div className="font-display text-cream text-xl leading-relaxed text-right">
+              <div className="font-sans text-cream text-base leading-relaxed text-right">
                 {m.content}
               </div>
             </div>
           ) : (
             <div key={i} className="self-start max-w-full pl-6 border-l-2 border-copper">
-              <div className="font-display italic text-cream text-lg leading-relaxed whitespace-pre-line">
+              <div className="font-sans text-cream text-sm leading-7 whitespace-pre-line">
                 {m.result.commentary}
               </div>
               <PicksTable picks={m.result.picks} />
@@ -27,7 +27,7 @@ export function MessageList({ messages, isStreaming }: { messages: Message[]; is
         )}
         {isStreaming && (
           <div className="self-start pl-6 border-l-2 border-copper/40">
-            <div className="font-display italic text-cream-muted/60">
+            <div className="font-sans text-sm text-cream-muted/60">
               thinking<span className="animate-pulse">…</span>
             </div>
           </div>

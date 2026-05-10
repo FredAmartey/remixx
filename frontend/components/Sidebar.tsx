@@ -1,23 +1,15 @@
 import Link from "next/link";
 import { SidebarNav } from "./SidebarNav";
-
-const playlists = [
-  "Late Drives",
-  "Sunday Slow",
-  "Studio Sessions",
-  "Heartbreak Hours",
-  "Deep Focus",
-  "Saturday Hangover",
-];
+import { playlistHref, playlistPresets } from "@/lib/featured";
 
 export function Sidebar() {
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-[240px] bg-walnut-deep flex flex-col">
+    <aside className="fixed bottom-0 left-0 top-0 hidden w-[284px] flex-col border-r border-copper/20 bg-walnut-deep/95 shadow-[24px_0_80px_rgba(0,0,0,0.22)] md:flex">
       {/* Wordmark */}
-      <div className="px-6 pt-6">
+      <div className="px-8 pt-8">
         <Link
           href="/chat"
-          className="font-display text-2xl italic text-copper tracking-tight hover:text-copper-glow transition-colors"
+          className="font-display text-4xl font-semibold text-copper transition-colors hover:text-copper-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/70"
         >
           Remixx
         </Link>
@@ -27,22 +19,15 @@ export function Sidebar() {
       <SidebarNav />
 
       {/* Divider */}
-      <div className="mx-6 mt-8 border-t border-cream/10" />
+      <div className="mx-8 mt-9 border-t border-cream/16" />
 
       {/* Playlists header */}
-      <div className="px-6 mt-6">
-        <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-copper">
-          Playlists
-        </span>
-      </div>
-
-      {/* Playlists */}
-      <div className="px-6 mt-3 flex flex-col gap-2.5">
-        {playlists.map((name) => (
+      <div className="px-8 mt-6 flex flex-col gap-4">
+        {playlistPresets.map(({ name, prompt, duration }) => (
           <a
             key={name}
-            href="#"
-            className="font-sans text-sm text-cream/70 hover:text-cream transition-colors"
+            href={playlistHref(prompt, duration)}
+            className="font-sans text-base text-cream/62 transition-colors hover:text-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/70"
           >
             {name}
           </a>
@@ -50,13 +35,13 @@ export function Sidebar() {
       </div>
 
       {/* User pill */}
-      <div className="mt-auto mb-6 px-6 flex items-center gap-3">
-        <div className="h-8 w-8 rounded-full bg-copper/20 flex items-center justify-center text-copper font-sans text-xs">
+      <div className="mb-7 mt-auto flex items-center gap-3 px-8">
+        <div className="flex h-9 w-9 items-center justify-center rounded-[4px] border border-copper/30 bg-copper/10 font-sans text-xs text-copper">
           F
         </div>
         <div className="flex flex-col leading-tight">
           <span className="font-sans text-sm text-cream">Fred Amartey</span>
-          <span className="font-sans text-[10px] uppercase tracking-wider text-cream-muted">
+          <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-cream-muted">
             Pro
           </span>
         </div>

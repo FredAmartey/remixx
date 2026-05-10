@@ -15,14 +15,14 @@ export function ProfileOutput({ profile }: { profile: TasteProfile }) {
       <div className="font-sans text-[10px] uppercase tracking-[0.2em] text-copper">
         Profile
       </div>
-      <p className="font-display italic text-cream text-xl leading-relaxed">
+      <p className="font-sans text-cream text-sm leading-7">
         {profile.summary}
       </p>
       <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
         {tags.map((t, i) => (
           <span
             key={`${t}-${i}`}
-            className="font-display italic text-sm text-copper"
+            className="font-sans text-xs uppercase tracking-[0.14em] text-copper"
           >
             · {t}
           </span>

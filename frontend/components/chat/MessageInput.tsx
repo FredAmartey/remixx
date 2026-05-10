@@ -25,7 +25,7 @@ export function MessageInput({
         ref={ref}
         disabled={disabled}
         placeholder="Type a vibe…"
-        className="flex-1 bg-transparent border-b border-cream/20 focus:border-copper focus:outline-none px-1 py-3 text-cream font-display italic placeholder:text-cream-muted/60 placeholder:italic transition-colors"
+        className="flex-1 bg-transparent border-b border-cream/20 px-1 py-3 font-sans text-sm text-cream transition-colors placeholder:text-cream-muted/60 focus:border-copper focus:outline-none"
       />
       <button
         type="submit"

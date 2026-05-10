@@ -56,7 +56,7 @@ export function PersonaSelector({
                 className="w-full text-left px-5 py-4 hover:bg-walnut transition-colors border-b border-cream/5 last:border-b-0"
               >
                 <div
-                  className={`font-display text-base ${
+                  className={`font-sans text-sm ${
                     active
                       ? "text-cream underline underline-offset-4 decoration-copper decoration-2"
                       : "text-cream"
@@ -64,7 +64,7 @@ export function PersonaSelector({
                 >
                   {p.name}
                 </div>
-                <div className="font-display italic text-xs text-cream-muted/80 mt-1">
+                <div className="font-sans text-xs text-cream-muted/80 mt-1">
                   {p.tagline}
                 </div>
               </button>

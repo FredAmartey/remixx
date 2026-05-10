@@ -6,16 +6,16 @@ Recommend music in conversational form. Given a natural-language request, mood d
 ## Data Used
 - 500 tracks sampled from the [Kaggle Spotify Tracks Dataset](https://huggingface.co/datasets/maharshipandya/spotify-tracks-dataset) (114K rows; sampled with genre diversity, max 30 per genre)
 - Per-track features used: title, artist, genre, mood (derived from valence + energy), energy, valence, danceability, acousticness, tempo
-- Vibe descriptions (Claude-generated 1-2 sentence semantic blurbs, one per track) embedded alongside metadata via late-fusion averaging in the FAISS index
+- Vibe descriptions cached in `vibes.json` and included with catalog metadata in the default TF-IDF retriever
 
 ## Algorithm Summary (in plain language)
 
 1. **You ask.** Could be a vibe ("songs for late at night"), a playlist request ("45 minute focus playlist"), or a list of songs you love.
-2. **Remixx classifies what you meant** using Claude Haiku — chat / playlist / taste.
-3. **It searches semantically.** A sentence-transformer model embeds your message and finds the 30 most-related tracks in the catalog by cosine similarity. The FAISS index uses late fusion: each track is encoded twice (metadata + a Claude-generated vibe description) and the two normalized embeddings are averaged. This makes "feel like…" queries match on the actual feel, not just the title and genre.
+2. **Remixx classifies what you meant** using fast deterministic rules — chat / playlist / taste.
+3. **It retrieves candidates.** A local TF-IDF index searches catalog metadata plus cached vibe blurbs. This keeps live demo requests sub-second. A heavier sentence-transformers + FAISS path remains available with `REMIXX_USE_SEMANTIC_RAG=1`.
 4. **It scores them with the original recommender.** The Module 3 weighted-feature scorer re-ranks the candidates by genre/mood/energy/valence/danceability/acoustic match. This gives you a transparent point breakdown for every pick.
-5. **It critiques itself.** Claude Sonnet reviews the top picks and flags any that obviously don't fit your intent. If it spots problems, it can reorder.
-6. **A DJ talks to you.** One of four DJ personas (warm, snark, nerd, hype) generates commentary explaining the picks in its own voice.
+5. **It critiques itself.** A deterministic guardrail pass flags picks that violate obvious energy or genre constraints. If it spots problems, it moves them down.
+6. **A DJ talks to you.** One of four DJ personas (warm, snark, nerd, hype) explains the picks in its own voice. Local persona templates are the default; optional LLM commentary can be enabled with `REMIXX_USE_LLM_COMMENTARY=1`.
 7. **You see the work.** Every step streams to the UI in real time. The agent's reasoning is visible, not a black box.
 
 ## Observed Behavior / Biases
@@ -26,13 +26,14 @@ Recommend music in conversational form. Given a natural-language request, mood d
 - **Single-taste assumption**: each request is independent. The system has no model of you over time.
 - **No lyric understanding**: a sad song with high-energy production is scored on energy, not emotional content.
 - **English-Western bias**: prompts and persona few-shots are English. Non-English requests still work but the persona output will be in English.
-- **Latency**: per-turn ~12-20s (down from ~30-50s in v0.1) thanks to Haiku for the critique step and parallel intent+retrieval. Still bound by the Agent SDK subprocess overhead — direct API key shaves another 3-5s.
+- **Retrieval nuance**: the default TF-IDF retriever is much faster than semantic embeddings, but it can miss abstract "sounds like" relationships when the right words are not present in metadata or vibe blurbs.
+- **Latency**: warm backend requests are sub-second. A measured `/chat` call returned in `real 0.16s` with backend `total_ms=78`; `/taste` returned in `real 0.06s` with backend `ms=33`.
 
 ## Evaluation Process
 
 `backend/eval/run_eval.py` runs the full agent on 25 predefined queries with a 5-pick golden-set check (genre OR mood overlap with expected sets). Mix of 8 chat queries, 8 playlist queries, 8 taste-seed queries, and 1 edge case ("i love mexico").
 
-Sample run results: ~84% pass rate, avg latency 32s, avg confidence 0.76.
+Sample run results before the speed pass were ~84% pass rate. The current targeted backend suite passes 17 tests in 2.30s, and direct endpoint timing shows sub-second warm responses.
 
 ## Intended Use
 
@@ -50,7 +51,7 @@ Sample run results: ~84% pass rate, avg latency 32s, avg confidence 0.76.
 
 ## Ideas for Improvement
 
-1. **Per-source retrieval weighting** — currently the metadata + vibe fusion is a simple average. Letting the agent learn weights per query mode (e.g. emphasize vibe for "feels like" queries, emphasize metadata for genre-specific asks) would lift quality further.
+1. **Hybrid retrieval weighting** — blend the fast TF-IDF retriever with the semantic FAISS path for queries that need more abstract matching.
 2. **Add a feedback loop** — thumbs up/down per pick, weights adjust over time. Currently weights are static.
 3. **Real audio features from Spotify API** — replace the dataset's pre-computed values with live API calls for current tracks
 4. **Multi-track-context personalization** — accept a "playlist seed" of songs you've recently played and bias retrieval toward continuity

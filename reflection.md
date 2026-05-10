@@ -18,13 +18,13 @@ The image-to-code skill's first batch of design references included 5 hero varia
 
 ## What surprised me
 
-How much of the "magic" in conversational AI music apps is actually orchestration. The pipeline is mechanically simple — embed query, retrieve top-30, score, critique, write commentary — but composing those steps with observable streaming is what makes the experience feel alive. The agent trace panel showing `Parse intent · 10s` then `Self-critique · 8s` makes a 30-second total turn feel deliberate instead of slow.
+How much of the "magic" in conversational AI music apps is actually orchestration. The pipeline is mechanically simple — retrieve candidates, score, critique, write commentary — but composing those steps with observable streaming is what makes the experience feel alive. The first version used several LLM calls and made the trace feel deliberate, but still slow. The final speed pass taught me that visible reasoning only helps if the product also respects the user's time.
 
 I also underestimated how much persona specialization affects perceived intelligence. Same picks, different voice → completely different UX. The "snark" persona felt smart in a way the picks alone didn't.
 
 ## System limitations and future work
 
-- Latency: ~12-20s per chat turn after the optimization pass (Haiku critique + parallel intent/retrieval, down from 30-50s). Still bound by Agent SDK subprocess overhead; direct API shaves another 3-5s.
+- Latency: warm chat and taste requests now return in under a second by default. The trade-off is that intent, critique, taste profiling, and persona commentary are deterministic instead of fully LLM-generated unless `REMIXX_USE_LLM_COMMENTARY=1` is enabled.
 - Single-taste model: every request is independent. No memory of past requests. Real personalization needs persistence + a learning signal.
 - Static weights: the +2.0 genre / +1.5 mood weights are hand-tuned, not learned from user feedback.
 - 500-song catalog: real recommenders work over 100M+ tracks. Many "no good match" failure modes get masked at scale.

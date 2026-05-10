@@ -66,11 +66,11 @@ export async function* streamChat(
     buffer += decoder.decode(value, { stream: true });
 
     // SSE event blocks separated by blank line
-    const blocks = buffer.split(/\n\n/);
+    const blocks = buffer.split(/\r?\n\r?\n/);
     buffer = blocks.pop() ?? "";
 
     for (const block of blocks) {
-      const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      const lines = block.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
       let event = "message";
       let data = "";
       for (const line of lines) {
@@ -86,6 +86,27 @@ export async function* streamChat(
         else if (event === "error") yield { type: "error", payload: parsed };
       } catch {
         // ignore malformed lines
+      }
+    }
+  }
+
+  if (buffer.trim()) {
+    const lines = buffer.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    let event = "message";
+    let data = "";
+    for (const line of lines) {
+      if (line.startsWith(":")) continue;
+      if (line.startsWith("event:")) event = line.slice(6).trim();
+      else if (line.startsWith("data:")) data += line.slice(5).trim();
+    }
+    if (data) {
+      try {
+        const parsed = JSON.parse(data);
+        if (event === "step") yield { type: "step", payload: parsed };
+        else if (event === "result") yield { type: "result", payload: parsed };
+        else if (event === "error") yield { type: "error", payload: parsed };
+      } catch {
+        // ignore malformed trailing data
       }
     }
   }

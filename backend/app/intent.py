@@ -1,14 +1,13 @@
-"""Intent classifier: chat | playlist | taste.
+"""Fast intent classifier: chat | playlist | taste.
 
-Uses Haiku with a JSON-output system prompt. Falls back to "chat" on parse errors.
+The first implementation used a Haiku call for every request, which made the UI
+feel broken during demos. These rules cover the app's visible workflows without
+leaving the request path waiting on an LLM.
 """
 from __future__ import annotations
 
-import json
+import re
 from typing import Literal, TypedDict
-
-from app.guardrails import extract_first_json
-from app.llm import LLMClient
 
 
 class Intent(TypedDict):
@@ -17,32 +16,46 @@ class Intent(TypedDict):
     seed_songs: list[str]
 
 
-SYSTEM = """You classify user messages for Remixx, a music app. Reply with strict JSON only — no markdown, no commentary:
+DURATION_RE = re.compile(r"\b(\d{1,3})\s*(?:min|mins|minute|minutes)\b", re.I)
+HOUR_RE = re.compile(r"\b(\d(?:\.\d+)?)\s*(?:hour|hours|hr|hrs)\b", re.I)
+SONG_SPLIT_RE = re.compile(r"\s*(?:,|\n|;)\s*")
+SONG_PAIR_RE = re.compile(r"\S+\s+(?:—|-|by)\s+\S+", re.I)
 
-{"mode": "chat" | "playlist" | "taste", "duration_min": null | <int>, "seed_songs": []}
 
-Rules:
-- "playlist" if the user asks for a playlist OR names a duration (minutes/hours)
-- "taste" if the user lists 3+ songs/artists they like (with — or "by" or "—" between artist and title)
-- "chat" otherwise (a single song request, a vibe description, or a general question)
+def _duration_minutes(message: str) -> int | None:
+    minute_match = DURATION_RE.search(message)
+    if minute_match:
+        return int(minute_match.group(1))
 
-When mode is "playlist" and a duration is named, set duration_min. Otherwise null.
-When mode is "taste", populate seed_songs with the song strings as written.
-"""
+    hour_match = HOUR_RE.search(message)
+    if hour_match:
+        return int(float(hour_match.group(1)) * 60)
+
+    return None
+
+
+def _seed_songs(message: str) -> list[str]:
+    cleaned = re.sub(r"^(?:here are|i love|songs i love|my favorites are)[:\s]+", "", message, flags=re.I)
+    parts = [part.strip(" .") for part in SONG_SPLIT_RE.split(cleaned) if part.strip(" .")]
+    return [part for part in parts if SONG_PAIR_RE.search(part)]
 
 
 def classify_intent(message: str) -> Intent:
-    client = LLMClient()
-    raw = client.complete("haiku", message, max_tokens=300, system=SYSTEM)
-    text = extract_first_json(raw)
-    if not text:
-        return {"mode": "chat", "duration_min": None, "seed_songs": []}
-    try:
-        parsed = json.loads(text)
+    msg = message.strip()
+    lower = msg.lower()
+    duration_min = _duration_minutes(msg)
+    seed_songs = _seed_songs(msg)
+
+    if len(seed_songs) >= 3:
+        return {"mode": "taste", "duration_min": None, "seed_songs": seed_songs}
+
+    if duration_min is not None or any(
+        word in lower for word in ("playlist", "mix for", "build me", "make me")
+    ):
         return {
-            "mode": parsed.get("mode", "chat") if parsed.get("mode") in {"chat", "playlist", "taste"} else "chat",
-            "duration_min": parsed.get("duration_min"),
-            "seed_songs": parsed.get("seed_songs", []),
+            "mode": "playlist",
+            "duration_min": duration_min,
+            "seed_songs": [],
         }
-    except json.JSONDecodeError:
-        return {"mode": "chat", "duration_min": None, "seed_songs": []}
+
+    return {"mode": "chat", "duration_min": None, "seed_songs": []}

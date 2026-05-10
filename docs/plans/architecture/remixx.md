@@ -10,7 +10,7 @@ Three modes share one chat surface.
 
 - **Chat** — natural-language requests ("something for staying up too late but hopeful") → ranked picks with DJ commentary
 - **Playlist** — structured requests ("a 45-minute focus playlist with a wind-down") → 10-song playlist with narrative arc, agent critiques and reorders
-- **Taste mirror** — paste 5–10 favorite songs → LLM extracts taste profile → recommends from catalog with explicit "why this matches you" reasoning
+- **Taste mirror** — paste 3–10 favorite songs → deterministic profile inference from retrieved neighbors → recommends from catalog with explicit "why this matches you" reasoning
 
 The Module 3 weighted scorer is preserved as a deterministic re-rank pass on top of the new RAG/agent pipeline.
 
@@ -20,23 +20,23 @@ The Module 3 weighted scorer is preserved as a deterministic re-rank pass on top
 Next.js + Tailwind frontend (chat UI, playlist canvas, taste-mirror, agent trace)
                   │ SSE streaming
 FastAPI
-  ├── intent classifier        (Haiku 4.5 — chat | playlist | taste)
-  ├── agent loop               (Sonnet 4.6 — plan → retrieve → critique → fix)
-  ├── RAG retriever            (sentence-transformers + FAISS)
+  ├── intent classifier        (deterministic rules — chat | playlist | taste)
+  ├── agent loop               (retrieve → rerank → critique → finalize)
+  ├── RAG retriever            (TF-IDF by default; semantic FAISS opt-in)
   ├── reranker                 (Module 3 weighted scorer, ported)
-  └── persona system           (4 voices, few-shot specialized)
+  └── persona system           (4 fast specialized voices)
                   │
 SQLite (sessions, saved playlists)
-catalog.csv + vibes.json + index.faiss
+catalog.csv + vibes.json
 ```
 
 **Data flow for a chat query:**
 1. User input → SSE endpoint
-2. Intent classifier (Haiku) tags mode, extracts query embedding seed
-3. RAG retrieves top-30 candidates by semantic similarity over (title + artist + genre + mood + Claude-generated vibe description)
-4. Agent (Sonnet) plans → retrieves → self-critiques ranking → reorders. Each step streamed to UI as collapsible trace
-5. Module 3 scorer re-ranks final top-K with explainable point breakdowns
-6. DJ persona generates commentary in selected voice
+2. Intent classifier tags mode and extracts duration or seed-song hints
+3. RAG retrieves top candidates from title, artist, genre, mood, and cached vibe text
+4. Module 3 scorer re-ranks candidates with explainable point breakdowns
+5. Self-critique guardrail flags obvious energy and genre mismatches, then reorders
+6. DJ persona generates fast specialized commentary in the selected voice
 7. Stream tokens + structured agent steps back to UI
 
 ## Stack
@@ -45,10 +45,10 @@ catalog.csv + vibes.json + index.faiss
 |---|---|---|
 | Backend | FastAPI (Python) | Course requires Python; FastAPI streams cleanly to Next.js |
 | Frontend | Next.js 15 + Tailwind + shadcn | World-class UI ceiling, fast iteration |
-| LLM | Claude Sonnet 4.6 (reasoning) + Haiku 4.5 (cheap ops) | Best instruction-following for agent; user has subscription |
-| LLM transport | Claude Agent SDK (default) + `anthropic` SDK fallback (`ANTHROPIC_API_KEY` env var) | Free for Fred while building; grader path works without subscription |
-| Embeddings | `sentence-transformers/all-MiniLM-L6-v2` (local) | No API cost, instant, reproducible |
-| Vector store | FAISS (local index file) | Fast, no infra |
+| LLM | Optional for commentary only | Keeps the default request path fast; richer prose can be enabled when latency is acceptable |
+| LLM transport | Claude Agent SDK + `anthropic` SDK fallback (`ANTHROPIC_API_KEY` env var) | Used by optional generation scripts and opt-in commentary |
+| Retrieval | TF-IDF over metadata + vibe text by default | No API cost, no model startup, reproducible, sub-second |
+| Semantic retrieval | sentence-transformers + FAISS behind `REMIXX_USE_SEMANTIC_RAG=1` | Quality option for demos where startup time is acceptable |
 | Persistence | SQLite (file-based) | No setup, proper schema, supports sessions + saved playlists |
 | Catalog | 500 songs from Kaggle Spotify dataset + Claude-generated vibe descriptions (cached) | Real songs, RAG-meaningful, reproducible |
 
@@ -56,9 +56,9 @@ catalog.csv + vibes.json + index.faiss
 
 | Stretch | Implementation |
 |---|---|
-| RAG enhancement | Multi-source retrieval: 3 indices (metadata, vibe descriptions, mood tags) with weighted fusion. Eval harness measures quality lift over single-source baseline. |
-| Agentic workflow | Observable plan→retrieve→critique→reorder loop. Each step streamed to UI as a collapsible trace panel with timing markers. |
-| Specialization | 4 DJ personas (warm late-night, snarky critic, music-theory nerd, hype). Each has curated few-shot examples. Output measurably differs by persona on identical inputs. |
+| RAG enhancement | Retrieval uses catalog metadata plus cached vibe descriptions, with a heavier semantic FAISS path available as an opt-in quality mode. |
+| Agentic workflow | Observable retrieve→rerank→critique→reorder loop. Each step streams to UI with timing markers. |
+| Specialization | 4 DJ personas (warm late-night, snarky critic, music-theory nerd, hype). Local voice templates produce measurably different output on identical inputs. |
 | Test harness | `eval/run_eval.py` runs 25 predefined queries, scores agreement with golden picks, measures latency, prints summary table. |
 
 ## Visual system (locked)
@@ -91,10 +91,10 @@ final-project/
 │   │   ├── main.py           (FastAPI entrypoint, /chat SSE endpoint)
 │   │   ├── agent.py          (plan→retrieve→critique loop, observable steps)
 │   │   ├── llm.py            (Agent SDK + anthropic SDK fallback shim)
-│   │   ├── rag.py            (FAISS + sentence-transformers, multi-source fusion)
+│   │   ├── rag.py            (TF-IDF RAG default; FAISS semantic opt-in)
 │   │   ├── reranker.py       (Module 3 scorer ported)
-│   │   ├── personas.py       (4 DJ voices with few-shot examples)
-│   │   ├── intent.py         (Haiku-based intent classifier)
+│   │   ├── personas.py       (4 DJ voices; optional LLM commentary)
+│   │   ├── intent.py         (deterministic intent classifier)
 │   │   └── db.py             (SQLite schema + queries)
 │   ├── data/
 │   │   ├── catalog.csv       (500 songs)
@@ -121,9 +121,9 @@ final-project/
 ## Reliability & guardrails
 
 - **Input validation** (FastAPI): query length caps, prompt injection filter, rate limit per session
-- **Output guardrails** (agent): self-critique loop catches obvious mismatches before returning to user
+- **Output guardrails** (agent): deterministic self-critique catches obvious mismatches before returning to user
 - **Confidence scoring**: each recommendation includes a confidence value derived from RAG similarity + reranker score agreement
-- **Logging**: structured JSON logs of every LLM call, every retrieval, every critique pass — surfaced in agent trace UI
+- **Logging**: structured JSON logs of every request, retrieval, and confidence result — surfaced in agent trace UI
 - **Eval harness**: 25-query golden set with pass/fail on top-3 agreement, latency, and confidence distribution
 
 ## Open decisions (deferred to implementation phase)

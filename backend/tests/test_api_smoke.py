@@ -47,6 +47,29 @@ def test_taste_blocks_prompt_injection():
     assert r.status_code == 400
 
 
+def test_taste_uses_seed_artist_profile_for_coldplay():
+    client = TestClient(app)
+    r = client.post(
+        "/taste",
+        json={
+            "seed_songs": [
+                "Viva La Vida - Coldplay",
+                "A Sky Full of Stars - Coldplay",
+                "Yellow - Coldplay",
+            ],
+            "persona": "snark",
+            "k": 5,
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["profile"]["genre"] == "alt-rock"
+    assert "Coldplay" in body["profile"]["summary"]
+    assert "generic recommendation soup" in body["commentary"]
+    assert body["picks"][0]["genre"] in body["profile"]["preferred_genres"]
+    assert body["picks"][0]["genre"] != "r-n-b"
+
+
 def test_playlist_blocks_prompt_injection():
     client = TestClient(app)
     r = client.post(

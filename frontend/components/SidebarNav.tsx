@@ -1,36 +1,32 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, ListMusic, Sparkles } from "lucide-react";
 
 const navItems = [
-  { label: "Chat", icon: MessageSquare, href: "/chat" },
-  { label: "Playlist", icon: ListMusic, href: "/playlist" },
-  { label: "Taste", icon: Sparkles, href: "/taste" },
+  { label: "Home", href: "/chat" },
+  { label: "Search", href: "/playlist" },
+  { label: "Your Library", href: "/taste" },
 ];
 
 export function SidebarNav() {
   const pathname = usePathname();
   return (
-    <nav className="px-6 mt-8 flex flex-col gap-4">
-      {navItems.map(({ label, icon: Icon, href }) => {
-        const active = pathname === href || (href === "/chat" && pathname === "/");
+    <nav className="mt-14 flex flex-col gap-5 px-8">
+      {navItems.map(({ label, href }) => {
+        const active =
+          pathname === href || (href === "/chat" && pathname === "/");
         return (
           <Link
             key={href}
             href={href}
-            className={`flex items-center gap-3 transition-colors ${
-              active ? "text-cream" : "text-cream hover:text-copper-glow"
+            className={`transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/70 ${
+              active ? "text-cream" : "text-cream-muted hover:text-cream"
             }`}
           >
-            <Icon
-              className={`h-4 w-4 ${active ? "text-copper" : "text-cream-muted"}`}
-              strokeWidth={1.5}
-            />
             <span
-              className={`font-display italic text-base ${
+              className={`font-display text-3xl italic leading-none ${
                 active
-                  ? "underline underline-offset-[6px] decoration-copper decoration-1"
+                  ? "underline decoration-copper decoration-1 underline-offset-[9px]"
                   : ""
               }`}
             >

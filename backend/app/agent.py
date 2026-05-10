@@ -1,4 +1,4 @@
-"""Observable agent loop: plan → retrieve → rerank → self-critique → reorder → commentary.
+"""Observable agent loop: plan → retrieve → rerank → critique → finalize → commentary.
 
 Each step yielded as {step, title, detail, ms} so the frontend can show the reasoning chain.
 The final yield is {step: "result", picks, commentary, total_ms, intent}.
@@ -7,19 +7,16 @@ This is the substantive AI feature: ties RAG + reranker + a critique pass togeth
 """
 from __future__ import annotations
 
-import json
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Generator
 
 import pandas as pd
 
-from app.guardrails import extract_first_json
 from app.intent import classify_intent
-from app.llm import LLMClient
 from app.personas import commentary as persona_commentary
 from app.rag import CATALOG, RAGRetriever
-from app.reranker import rerank
+from app.reranker import infer_query_overrides, rerank
 
 _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="remixx-agent")
 
@@ -41,25 +38,26 @@ def _retr() -> RAGRetriever:
     return _retriever
 
 
-CRITIQUE_SYSTEM = (
-    "You are a quality-control reviewer for music recommendations. "
-    "You look at a ranked list of picks and identify ones that obviously don't match the user's intent. "
-    "Reply with strict JSON only:\n"
-    '{"issues": [{"index": <int>, "reason": "<short>"}], "reorder": null | [<int>, ...]}\n\n'
-    "Indexes are 1-based and must be within [1, k] where k is the number of picks shown. "
-    "Do not include duplicate indexes in `reorder`. "
-    "If everything fits, return {\"issues\": [], \"reorder\": null}. "
-    "Be conservative — only flag obvious mismatches, not subjective preferences."
-)
+def _critique_picks(user_prefs: dict, picks: list[dict]) -> dict:
+    """Fast deterministic QC pass that flags obvious energy/genre mismatches."""
+    issues = []
+    max_energy = user_prefs.get("max_energy")
+    excluded_genres = {str(g).lower() for g in user_prefs.get("excluded_genres", set())}
 
+    for index, pick in enumerate(picks, start=1):
+        energy = float(pick.get("energy", 0) or 0)
+        genre = str(pick.get("genre", "")).lower()
+        if max_energy is not None and energy > float(max_energy):
+            issues.append({"index": index, "reason": "too energetic for request"})
+        elif genre in excluded_genres:
+            issues.append({"index": index, "reason": "genre conflicts with vibe guardrail"})
 
-def _critique_prompt(user_query: str, picks: list[dict]) -> str:
-    pick_str = "\n".join(
-        f"{i+1}. {p.get('title')} — {p.get('artist')} "
-        f"(genre: {p.get('genre')}, mood: {p.get('mood')}, energy: {float(p.get('energy', 0)):.2f})"
-        for i, p in enumerate(picks)
-    )
-    return f"User wanted: {user_query}\n\nPicks ranked so far:\n{pick_str}\n\nReply with the JSON."
+    issue_indexes = {issue["index"] for issue in issues}
+    reorder = [
+        *[i for i in range(1, len(picks) + 1) if i not in issue_indexes],
+        *[i for i in range(1, len(picks) + 1) if i in issue_indexes],
+    ]
+    return {"issues": issues, "reorder": reorder if issues else None}
 
 
 def run_agent(
@@ -71,12 +69,11 @@ def run_agent(
     t0 = time.time()
     df = _catalog()
     retr = _retr()
-    llm = LLMClient()
 
-    # Steps 1 + 2 in parallel — intent (Haiku LLM call) and retrieval (FAISS) are independent
+    # Steps 1 + 2 in parallel — intent and retrieval are independent.
     t = time.time()
     intent_fut = _executor.submit(classify_intent, user_query)
-    retrieve_fut = _executor.submit(retr.search, user_query, 30)
+    retrieve_fut = _executor.submit(retr.search, user_query, 60)
 
     intent = intent_fut.result()
     yield {
@@ -96,7 +93,7 @@ def run_agent(
     if mode == "taste" and seed_songs:
         retrieve_fut.cancel()
         retrieval_query = ", ".join(seed_songs)
-        hits = retr.search(retrieval_query, k=30)
+        hits = retr.search(retrieval_query, k=60)
     else:
         hits = retrieve_fut.result()
 
@@ -113,7 +110,7 @@ def run_agent(
     yield {
         "step": 2,
         "title": "Retrieve candidates",
-        "detail": f"{len(candidates)} via semantic search",
+        "detail": f"{len(candidates)} via catalog retrieval",
         "ms": int((time.time() - t) * 1000),
     }
 
@@ -131,6 +128,7 @@ def run_agent(
         "energy": float(pd.Series([c["energy"] for c in candidates[:10]]).mean()),
         "likes_acoustic": float(pd.Series([c["acousticness"] for c in candidates[:10]]).mean()) > 0.5,
     }
+    user_prefs.update(infer_query_overrides(user_query))
     ranked = rerank(user_prefs, candidates, k=k * 2)
     yield {
         "step": 3,
@@ -141,19 +139,7 @@ def run_agent(
 
     # Step 4: self-critique
     t = time.time()
-    crit_raw = llm.complete(
-        "haiku",
-        _critique_prompt(user_query, ranked[:k]),
-        max_tokens=600,
-        system=CRITIQUE_SYSTEM,
-    )
-    text = extract_first_json(crit_raw)
-    crit: dict = {"issues": [], "reorder": None}
-    if text:
-        try:
-            crit = json.loads(text)
-        except json.JSONDecodeError:
-            pass
+    crit = _critique_picks(user_prefs, ranked[:k])
     issue_count = len(crit.get("issues", []))
     yield {
         "step": 4,

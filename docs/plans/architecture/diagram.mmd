@@ -3,20 +3,20 @@ flowchart LR
         UI["Chat UI<br/>Persona dropdown<br/>Agent trace panel"]
     end
 
-    subgraph BE["Backend (FastAPI + Claude Agent SDK)"]
+    subgraph BE["Backend (FastAPI)"]
         API["/chat (SSE)<br/>/taste<br/>/playlist<br/>/personas"]
         GUARD["Guardrails<br/>injection filter<br/>length cap"]
-        AGENT["Agent loop<br/>plan → retrieve →<br/>rerank → critique →<br/>reorder → DJ commentary"]
-        INTENT["Intent classifier<br/>(Haiku)"]
-        RAG["RAG retriever<br/>(sentence-transformers + FAISS)"]
+        AGENT["Agent loop<br/>retrieve → rerank →<br/>critique → reorder →<br/>DJ commentary"]
+        INTENT["Intent classifier<br/>(deterministic)"]
+        RAG["RAG retriever<br/>(TF-IDF default)"]
         RERANK["Reranker<br/>Module 3 scorer<br/>(deterministic)"]
-        PERSONA["DJ Personas<br/>(few-shot, Sonnet)"]
+        PERSONA["DJ Personas<br/>(fast specialized voices)"]
         CONF["Confidence<br/>scoring"]
     end
 
     subgraph DATA["Data"]
         CSV["catalog.csv<br/>500 tracks"]
-        IDX["FAISS index<br/>+ id metadata"]
+        VIBES["vibes.json<br/>cached descriptions"]
     end
 
     UI -->|HTTP/SSE| API
@@ -26,10 +26,10 @@ flowchart LR
     AGENT --> INTENT
     AGENT --> RAG
     RAG --> CSV
-    RAG --> IDX
+    RAG --> VIBES
     AGENT --> RERANK
     RERANK -->|user_prefs derived<br/>from top retrievals| AGENT
-    AGENT -->|self-critique<br/>via Sonnet| AGENT
+    AGENT -->|self-critique<br/>guardrail| AGENT
     AGENT --> PERSONA
     AGENT --> CONF
     CONF -->|confidence + picks +<br/>commentary + step trace| API

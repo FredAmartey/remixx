@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
+  <title id="title">Remixx applied AI system architecture</title>
+  <desc id="desc">Frontend sends chat, playlist, and taste requests to a FastAPI backend. Guardrails, retrieval, reranking, critique, persona commentary, confidence scoring, and persistence produce results from catalog and vibe data.</desc>
+  <defs>
+    <style>
+      .bg{fill:#2a1f18}.panel{fill:#1a130e;stroke:#c97939;stroke-width:2}.panel2{fill:#231811;stroke:#e8a14a;stroke-width:2}.data{fill:#0e0908;stroke:#c97939;stroke-width:2}.title{fill:#f5efe3;font:700 30px Georgia,serif}.h{fill:#f5efe3;font:700 22px Arial,sans-serif}.t{fill:#dccfbb;font:16px Arial,sans-serif}.small{fill:#bba98e;font:14px Arial,sans-serif}.arrow{stroke:#e8a14a;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#e8a14a"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="1400" height="760"/>
+  <text x="60" y="68" class="title">Remixx Applied AI System</text>
+  <text x="60" y="100" class="small">Fast RAG retrieval, observable agent workflow, guardrails, persona specialization, and reliability testing.</text>
+
+  <rect x="60" y="150" width="300" height="420" rx="10" class="panel"/>
+  <text x="90" y="195" class="h">Frontend</text>
+  <text x="90" y="232" class="t">Next.js app routes</text>
+  <text x="90" y="264" class="t">Chat UI + SSE trace</text>
+  <text x="90" y="296" class="t">Playlist builder</text>
+  <text x="90" y="328" class="t">Taste mirror</text>
+  <text x="90" y="360" class="t">Shared music player</text>
+  <text x="90" y="422" class="small">User clicks and inputs</text>
+  <text x="90" y="450" class="small">flow through one API client.</text>
+
+  <rect x="460" y="110" width="500" height="540" rx="10" class="panel2"/>
+  <text x="500" y="155" class="h">Backend</text>
+  <text x="500" y="192" class="t">FastAPI: /chat, /playlist, /taste</text>
+  <text x="500" y="236" class="t">1. Input guardrails</text>
+  <text x="500" y="276" class="t">2. Deterministic intent classifier</text>
+  <text x="500" y="316" class="t">3. RAG retriever, TF-IDF default</text>
+  <text x="500" y="356" class="t">4. Module 3 weighted reranker</text>
+  <text x="500" y="396" class="t">5. Self-critique guardrail</text>
+  <text x="500" y="436" class="t">6. DJ persona commentary</text>
+  <text x="500" y="476" class="t">7. Confidence scoring + logging</text>
+  <text x="500" y="540" class="small">Optional: semantic FAISS retrieval with</text>
+  <text x="500" y="566" class="small">REMIXX_USE_SEMANTIC_RAG=1.</text>
+
+  <rect x="1060" y="150" width="280" height="420" rx="10" class="data"/>
+  <text x="1090" y="195" class="h">Data</text>
+  <text x="1090" y="232" class="t">catalog.csv</text>
+  <text x="1090" y="264" class="small">500 tracks, genre, mood,</text>
+  <text x="1090" y="290" class="small">energy, valence, tempo</text>
+  <text x="1090" y="338" class="t">vibes.json</text>
+  <text x="1090" y="370" class="small">cached track descriptions</text>
+  <text x="1090" y="420" class="t">remixx.db</text>
+  <text x="1090" y="452" class="small">sessions and saved playlists</text>
+
+  <path d="M360 280 C395 280 420 250 460 250" class="arrow"/>
+  <text x="377" y="238" class="small">HTTP / SSE</text>
+  <path d="M960 300 C1000 300 1020 260 1060 260" class="arrow"/>
+  <text x="978" y="248" class="small">retrieve</text>
+  <path d="M1060 430 C1015 430 1000 480 960 480" class="arrow"/>
+  <text x="983" y="526" class="small">persist</text>
+  <path d="M460 520 C420 520 395 470 360 470" class="arrow"/>
+  <text x="372" y="518" class="small">picks, trace, confidence</text>
+</svg>

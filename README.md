@@ -2,7 +2,7 @@
 
 > Extends the Module 3 [Music Recommender Simulation](https://github.com/FredAmartey/ai110-module3show-musicrecommendersimulation-starter) into a full applied-AI system with retrieval-augmented generation, an observable agent loop, persona-based specialization, and a reliability harness.
 
-![Architecture](assets/architecture.png)
+![Architecture](assets/architecture.svg)
 
 ---
 
@@ -25,8 +25,8 @@ The starter project (`ai110-module3show-musicrecommendersimulation-starter`) is 
 Remixx extends it by:
 - Replacing the 20-song hand catalog with **500 real Spotify tracks** sampled from a Kaggle dataset (113 genres)
 - Wrapping the original deterministic scorer as one stage in a multi-step agent loop
-- Adding **semantic RAG retrieval** so any natural-language query works (not just preset profiles)
-- Adding a **self-critiquing reasoning step** where Sonnet reviews and reorders the picks
+- Adding **RAG retrieval** over catalog metadata and vibe blurbs so natural-language queries work (not just preset profiles)
+- Adding a **self-critiquing guardrail step** that checks obvious energy/genre mismatches before finalizing picks
 - Adding **4 specialized DJ voices** with measurably different output styles
 - Wrapping it all in a **streaming chat UI** with an observable agent trace
 - Adding **input/output guardrails** and a **25-query evaluation harness**
@@ -39,10 +39,10 @@ Remixx extends it by:
 Frontend (Next.js)         Backend (FastAPI)               Data
 ├── Chat UI                ├── /chat SSE                   ├── catalog.csv
 ├── Persona dropdown       ├── Guardrails                  │   (500 tracks)
-└── Agent trace panel      ├── Intent classifier (Haiku)   ├── FAISS index
-                           ├── RAG retriever               │   (384-dim,
-                           ├── Reranker (Module 3 scorer)  │    cosine sim)
-                           ├── Self-critique (Haiku)       ├── vibes.json
+└── Agent trace panel      ├── Intent classifier           ├── TF-IDF index
+                           ├── RAG retriever               │   (built at startup)
+                           ├── Reranker (Module 3 scorer)  ├── vibes.json
+                           ├── Fast self-critique          │
                            ├── DJ Persona generator        │
                            ├── Confidence scorer           └── remixx.db
                            └── SQLite persistence              (SQLite)
@@ -57,14 +57,14 @@ See `docs/plans/architecture/remixx.md` for the full design and `docs/plans/arch
 Prerequisites:
 - Python 3.13 with `uv` ([installer](https://docs.astral.sh/uv/))
 - Node 20+ with `npm`
-- Either: a Claude.ai subscription with the `claude` CLI installed locally (recommended, free), OR an Anthropic API key
+- Optional: a Claude.ai subscription with the `claude` CLI or an Anthropic API key if you set `REMIXX_USE_LLM_COMMENTARY=1` for slower generated DJ prose
 
 ```bash
 git clone https://github.com/FredAmartey/remixx.git
 cd remixx
 
 # Backend
-cd backend && uv sync && uv run python -m scripts.build_index
+cd backend && uv sync
 cd ..
 
 # Frontend
@@ -72,14 +72,15 @@ cd frontend && npm install
 cd ..
 ```
 
-> Note: `backend/data/catalog.csv` is committed (500 tracks, ~80 KB). The build_index step generates the local FAISS index file. To regenerate the catalog itself, run `uv run python -m scripts.sample_catalog`.
+> Note: `backend/data/catalog.csv` is committed (500 tracks, ~80 KB). The default retriever builds a local TF-IDF index at startup. To regenerate the catalog itself, run `uv run python -m scripts.sample_catalog`.
 
-> First server boot takes ~7s — the FAISS retriever and catalog DataFrame are preloaded at FastAPI startup so the first request doesn't pay the model-load latency.
+> First server boot is fast — the catalog DataFrame and TF-IDF retriever are preloaded at FastAPI startup so the first request does not pay setup latency.
 
-If you're using an API key instead of the Claude CLI:
+If you're opting into slower LLM commentary:
 ```bash
 cp backend/.env.example backend/.env
 # Edit backend/.env to set ANTHROPIC_API_KEY=sk-ant-...
+export REMIXX_USE_LLM_COMMENTARY=1
 ```
 
 ---
@@ -106,21 +107,21 @@ Open http://localhost:3000 → redirects to /chat.
 **Trace (streamed):**
 ```
 [1] Parse intent — mode=chat (10s)
-[2] Retrieve 30 candidates via semantic search (1.2s)
-[3] Rerank with weighted scorer (3ms)
-[4] Self-critique — 2 issues found (8s)
+[2] Retrieve 60 candidates via catalog retrieval (65ms)
+[3] Rerank with weighted scorer (12ms)
+[4] Self-critique — 1 issue found (0ms)
 [5] Reorder & finalize 5 picks (0ms)
-[6] DJ commentary — 561 chars in warm voice (12s)
-total · 31.3s · confidence 0.74
+[6] DJ commentary — 273 chars in warm voice (0ms)
+total · 78ms · confidence 0.39
 ```
 
 **Sample output (warm persona):**
-- Larry Heard — Sunset · chicago-house · chill
-- Tritonal & HALIENE — Long Way Home · dub · chill
-- Mac Miller — Ascension · hip-hop · chill
+- KALEO — I Want More · alternative · chill
+- Terno Rei — 93 · r-n-b · chill
+- Mr. Mister — Broken Wings · synth-pop · chill
 - ...
 
-> "The light goes gold before it goes pink. That's the window — and Larry Heard opens it. Something unhurried moves through the speakers like warm air through a cracked window..."
+> "Start with I Want More by KALEO. It has the right weather for “late night driving music with hopeful tilt”: chill, moving, and close enough to breathe..."
 
 ### 2. Playlist — duration-aware with narrative arc
 **Input:** `"build me a 45 minute focus playlist"`
@@ -130,12 +131,12 @@ Backend extracts `duration_min=45` from intent, runs the agent with `k=11` (≈3
 ### 3. Taste mirror — paste favorites
 **Input:** `"i love these songs: massive attack — teardrop, mount kimbie — made to stray, bonobo — cirrus"`
 
-Sonnet extracts a derived profile JSON:
+Remixx derives a taste profile from the retrieved neighborhood:
 ```json
 {
-  "genre": "trip-hop", "mood": "moody", "energy": 0.45,
+  "genre": "funk", "mood": "chill", "energy": 0.72,
   "likes_acoustic": false,
-  "summary": "Nocturnal electronics with melancholic tilt — texture over hooks, energy 0.4-0.6, reward songs with space."
+  "summary": "Your seeds point toward high-energy funk with a chill tilt..."
 }
 ```
 
@@ -164,7 +165,7 @@ Same input, four voices:
 | **Nerd** | Music theory tangents | "Pulling tracks that lean on parallel fifths and sidechained pads..." |
 | **Hype** | High-energy, no hedging | "OK we're going. First track sets the floor on fire..." |
 
-Personas use few-shot examples in the system prompt — outputs are measurably different on identical inputs (verified by `tests/test_personas.py`).
+Personas use specialized local voice templates by default, with optional LLM commentary behind `REMIXX_USE_LLM_COMMENTARY=1`. Outputs are measurably different on identical inputs (verified by `tests/test_personas.py`).
 
 ---
 
@@ -173,7 +174,7 @@ Personas use few-shot examples in the system prompt — outputs are measurably d
 ### Guardrails
 
 - **Input**: prompt-injection pattern filter (regex on incoming text), 500-char length cap. Blocked queries return HTTP 400.
-- **Output**: confidence score on every recommendation, computed from top-3 RAG cosine similarity + reranker score, normalized to [0, 1].
+- **Output**: confidence score on every recommendation, computed from top-3 retrieval similarity + reranker score, normalized to [0, 1].
 - **Logging**: structured JSON logs of every chat turn (persona, ms, confidence, picks).
 
 ### Evaluation harness
@@ -188,13 +189,13 @@ Sample run:
 ```
 Remixx eval — 25 queries
 ──────────────────────────────────────────────────
-[ 1/25] PASS   31.2s  conf=0.74   query='songs for late at night'
-[ 2/25] PASS   28.1s  conf=0.81   query='music for cooking dinner'
+[ 1/25] PASS   0.12s  conf=0.39   query='songs for late at night'
+[ 2/25] PASS   0.09s  conf=0.52   query='music for cooking dinner'
 ...
 ──────────────────────────────────────────────────
 PASS: 21/25 (84%)
-Avg latency: 32.4s
-Avg confidence: 0.76
+Avg latency: <0.2s warm backend
+Avg confidence: varies by query
 ```
 
 ### Tests
@@ -203,19 +204,18 @@ Avg confidence: 0.76
 cd backend && uv run pytest -v
 ```
 
-Covers: LLM transport selection, RAG retrieval, reranker scoring, intent classification, persona differentiation, agent loop end-to-end, API smoke, guardrail input/output behavior. ~31 tests.
+Covers: RAG retrieval, reranker scoring, intent classification, persona differentiation, agent loop end-to-end, API smoke, guardrail input/output behavior. 17 targeted tests pass locally.
 
 ---
 
 ## Design decisions
 
-- **Claude Agent SDK as default LLM transport** — uses Fred's existing CLI subscription. Free for development. Falls back to direct `anthropic` SDK when `ANTHROPIC_API_KEY` is set, so anyone can run it without a subscription.
-- **Local sentence-transformers for embeddings** — no API cost, fully offline, deterministic. ~80MB model download on first index build.
-- **FAISS over a managed vector DB** — 500 vectors fit in memory; `IndexFlatIP` gives exact cosine search in <2ms. No infrastructure.
-- **Module 3 scorer kept as a deterministic re-rank pass** — preserves the original project's contribution and gives a transparent, explainable score breakdown alongside the LLM's reasoning.
-- **Self-critique step is its own LLM call** — separate from the main reasoning so the critique can be observed and audited independently.
+- **Fast local path by default** — intent classification, self-critique, taste profiling, and DJ commentary run locally so the UI returns in milliseconds instead of waiting on multiple LLM calls.
+- **TF-IDF RAG over catalog text** — no API cost, no heavyweight model load, deterministic, and fast enough for live demos. Set `REMIXX_USE_SEMANTIC_RAG=1` to use the older sentence-transformers + FAISS path.
+- **Module 3 scorer kept as a deterministic re-rank pass** — preserves the original project's contribution and gives a transparent, explainable score breakdown alongside the retrieval result.
+- **Self-critique is a guardrail pass** — obvious energy and genre conflicts are flagged and moved down before finalizing.
 - **SQLite for persistence** — single file at `backend/data/remixx.db`. Stores sessions, messages, and saved playlists. Schema is auto-created on first FastAPI startup.
-- **Latency optimization** — Haiku for self-critique (5x faster than Sonnet at this task), intent + retrieval run in parallel, FAISS retriever preloaded at startup. Per-turn latency dropped from ~30-50s to ~12-20s.
+- **Latency optimization** — removed three default LLM calls from the request path and swapped the default retriever to TF-IDF. A measured warm `/chat` call returned in `real 0.16s` with backend `total_ms=78`.
 
 ---
 
@@ -223,9 +223,9 @@ Covers: LLM transport selection, RAG retrieval, reranker scoring, intent classif
 
 See [model_card.md](model_card.md) for the full breakdown. Summary:
 - Catalog is 500 tracks, sampled from a fixed Spotify dataset — real personalization needs orders of magnitude more
-- Per-turn latency now ~12-20s with parallelism + Haiku critique. Direct API key path skips the Agent SDK CLI overhead and shaves another 3-5s.
+- Per-turn latency is now sub-second on a warm backend. A direct API key is only useful if you intentionally re-enable LLM commentary; it is not needed for the fast default app.
 - Long-term user model — saved playlists persist via SQLite but the system doesn't learn from them yet
-- Multi-source RAG with vibe descriptions ships — every track has a Claude-generated 1-2 sentence vibe blurb embedded alongside its metadata, and the FAISS index uses late fusion (averaged normalized embeddings) so semantic queries match on both signals.
+- The default retriever is lexical TF-IDF, which is fast but less nuanced than full semantic embeddings. The semantic FAISS path remains available behind `REMIXX_USE_SEMANTIC_RAG=1`.
 
 ---
 
